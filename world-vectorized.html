@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>Selective Bloom</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+
+			body {
+				background-color: #ccc;
+				color: #000;
+				font-family: sans-serif;
+			}
+
+			a {
+				color: #f00;
+			}
+
+			button {
+				border-radius: 5px;
+				border: solid white 3px;
+				background-color: #00004d;
+				color: white;
+				font-weight: bold;
+				font-size: 18px;
+				padding: 5px 10px 5px 10px;
+				margin-top: 10px;
+			}
+
+
+
+			button:hover {
+				background-color: #000099;
+			}
+
+			button:active {
+				background-color: #0000ff;
+			}
+
+		</style>
+
+
+
+	</head>
+
+	<body>
+
+
+
+<script type="x-shader/x-vertex" id="vertexshader">
+
+			varying vec2 vUv;
+
+			void main() {
+
+				vUv = uv;
+
+				gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+
+			}
+
+		</script>
+
+		<script type="x-shader/x-fragment" id="fragmentshader">
+
+			uniform sampler2D baseTexture;
+			uniform sampler2D bloomTexture;
+
+			varying vec2 vUv;
+
+			void main() {
+
+				gl_FragColor = ( texture2D( baseTexture, vUv ) + vec4( 1 ) * texture2D( bloomTexture, vUv ) );
+
+			}
+
+		</script>
+
+
+		<script type="module">
+
+import * as THREE from "https://cdn.skypack.dev/three@0.132.2";
+import { OrbitControls } from "https://cdn.skypack.dev/three@0.132.2/examples/jsm/controls/OrbitControls.js";
+import {DragControls} from 'https://threejsfundamentals.org/threejs/resources/threejs/r122/examples/jsm/controls/DragControls.js';
+import { EffectComposer } from 'https://cdn.skypack.dev/three@0.132.2/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'https://cdn.skypack.dev/three@0.132.2/examples/jsm/postprocessing/RenderPass.js';
+import { ShaderPass } from 'https://cdn.skypack.dev/three@0.132.2/examples/jsm/postprocessing/ShaderPass.js';
+import { UnrealBloomPass } from 'https://cdn.skypack.dev/three@0.132.2/examples/jsm/postprocessing/UnrealBloomPass.js';
+
+
+
+			const colors = [0x00FF00, 0x01FF00, 0x02FF00, 0x03FF00, 0x04FF00, 0x05FF00, 0x06FF00, 0x07FF00, 0x08FF00, 0x09FF00, 0x0AFF00, 0x0BFF00, 0x0CFF00, 0x0DFF00, 0x0EFF00, 0x0FFF00, 0x10FF00, 0x11FF00, 0x12FF00, 0x13FF00, 0x14FF00, 0x15FF00, 0x16FF00, 0x17FF00, 0x18FF00, 0x19FF00, 0x1AFF00, 0x1BFF00, 0x1CFF00, 0x1DFF00, 0x1EFF00, 0x1FFF00, 0x20FF00, 0x21FF00, 0x22FF00, 0x23FF00, 0x24FF00, 0x25FF00, 0x26FF00, 0x27FF00, 0x28FF00, 0x29FF00, 0x2AFF00, 0x2BFF00, 0x2CFF00, 0x2DFF00, 0x2EFF00, 0x2FFF00, 0x30FF00, 0x31FF00, 0x32FF00, 0x33FF00, 0x34FF00, 0x35FF00, 0x36FF00, 0x37FF00, 0x38FF00, 0x39FF00, 0x3AFF00, 0x3BFF00, 0x3CFF00, 0x3DFF00, 0x3EFF00, 0x3FFF00, 0x40FF00, 0x41FF00, 0x42FF00, 0x43FF00, 0x44FF00, 0x45FF00, 0x46FF00, 0x47FF00, 0x48FF00, 0x49FF00, 0x4AFF00, 0x4BFF00, 0x4CFF00, 0x4DFF00, 0x4EFF00, 0x4FFF00, 0x50FF00, 0x51FF00, 0x52FF00, 0x53FF00, 0x54FF00, 0x55FF00, 0x56FF00, 0x57FF00, 0x58FF00, 0x59FF00, 0x5AFF00, 0x5BFF00, 0x5CFF00, 0x5DFF00, 0x5EFF00, 0x5FFF00, 0x60FF00, 0x61FF00, 0x62FF00, 0x63FF00, 0x64FF00, 0x65FF00, 0x66FF00, 0x67FF00, 0x68FF00, 0x69FF00, 0x6AFF00, 0x6BFF00, 0x6CFF00, 0x6DFF00, 0x6EFF00, 0x6FFF00, 0x70FF00, 0x71FF00, 0x72FF00, 0x73FF00, 0x74FF00, 0x75FF00, 0x76FF00, 0x77FF00, 0x78FF00, 0x79FF00, 0x7AFF00, 0x7BFF00, 0x7CFF00, 0x7DFF00, 0x7EFF00, 0x7FFF00, 0x80FF00, 0x81FF00, 0x82FF00, 0x83FF00, 0x84FF00, 0x85FF00, 0x86FF00, 0x87FF00, 0x88FF00, 0x89FF00, 0x8AFF00, 0x8BFF00, 0x8CFF00, 0x8DFF00, 0x8EFF00, 0x8FFF00, 0x90FF00, 0x91FF00, 0x92FF00, 0x93FF00, 0x94FF00, 0x95FF00, 0x96FF00, 0x97FF00, 0x98FF00, 0x99FF00, 0x9AFF00, 0x9BFF00, 0x9CFF00, 0x9DFF00, 0x9EFF00, 0x9FFF00, 0xA0FF00, 0xA1FF00, 0xA2FF00, 0xA3FF00, 0xA4FF00, 0xA5FF00, 0xA6FF00, 0xA7FF00, 0xA8FF00, 0xA9FF00, 0xAAFF00, 0xABFF00, 0xACFF00, 0xADFF00, 0xAEFF00, 0xAFFF00, 0xB0FF00, 0xB1FF00, 0xB2FF00, 0xB3FF00, 0xB4FF00, 0xB5FF00, 0xB6FF00, 0xB7FF00, 0xB8FF00, 0xB9FF00, 0xBAFF00, 0xBBFF00, 0xBCFF00, 0xBDFF00, 0xBEFF00, 0xBFFF00, 0xC0FF00, 0xC1FF00, 0xC2FF00, 0xC3FF00, 0xC4FF00, 0xC5FF00, 0xC6FF00, 0xC7FF00, 0xC8FF00, 0xC9FF00, 0xCAFF00, 0xCBFF00, 0xCCFF00, 0xCDFF00, 0xCEFF00, 0xCFFF00, 0xD0FF00, 0xD1FF00, 0xD2FF00, 0xD3FF00, 0xD4FF00, 0xD5FF00, 0xD6FF00, 0xD7FF00, 0xD8FF00, 0xD9FF00, 0xDAFF00, 0xDBFF00, 0xDCFF00, 0xDDFF00, 0xDEFF00, 0xDFFF00, 0xE0FF00, 0xE1FF00, 0xE2FF00, 0xE3FF00, 0xE4FF00, 0xE5FF00, 0xE6FF00, 0xE7FF00, 0xE8FF00, 0xE9FF00, 0xEAFF00, 0xEBFF00, 0xECFF00, 0xEDFF00, 0xEEFF00, 0xEFFF00, 0xF0FF00, 0xF1FF00, 0xF2FF00, 0xF3FF00, 0xF4FF00, 0xF5FF00, 0xF6FF00, 0xF7FF00, 0xF8FF00, 0xF9FF00, 0xFAFF00, 0xFBFF00, 0xFCFF00, 0xFDFF00, 0xFEFF00, 0xFFFF00, 0xFFFE00, 0xFFFD00, 0xFFFC00, 0xFFFB00, 0xFFFA00, 0xFFF900, 0xFFF800, 0xFFF700, 0xFFF600, 0xFFF500, 0xFFF400, 0xFFF300, 0xFFF200, 0xFFF100, 0xFFF000, 0xFFEF00, 0xFFEE00, 0xFFED00, 0xFFEC00, 0xFFEB00, 0xFFEA00, 0xFFE900, 0xFFE800, 0xFFE700, 0xFFE600, 0xFFE500, 0xFFE400, 0xFFE300, 0xFFE200, 0xFFE100, 0xFFE000, 0xFFDF00, 0xFFDE00, 0xFFDD00, 0xFFDC00, 0xFFDB00, 0xFFDA00, 0xFFD900, 0xFFD800, 0xFFD700, 0xFFD600, 0xFFD500, 0xFFD400, 0xFFD300, 0xFFD200, 0xFFD100, 0xFFD000, 0xFFCF00, 0xFFCE00, 0xFFCD00, 0xFFCC00, 0xFFCB00, 0xFFCA00, 0xFFC900, 0xFFC800, 0xFFC700, 0xFFC600, 0xFFC500, 0xFFC400, 0xFFC300, 0xFFC200, 0xFFC100, 0xFFC000, 0xFFBF00, 0xFFBE00, 0xFFBD00, 0xFFBC00, 0xFFBB00, 0xFFBA00, 0xFFB900, 0xFFB800, 0xFFB700, 0xFFB600, 0xFFB500, 0xFFB400, 0xFFB300, 0xFFB200, 0xFFB100, 0xFFB000, 0xFFAF00, 0xFFAE00, 0xFFAD00, 0xFFAC00, 0xFFAB00, 0xFFAA00, 0xFFA900, 0xFFA800, 0xFFA700, 0xFFA600, 0xFFA500, 0xFFA400, 0xFFA300, 0xFFA200, 0xFFA100, 0xFFA000, 0xFF9F00, 0xFF9E00, 0xFF9D00, 0xFF9C00, 0xFF9B00, 0xFF9A00, 0xFF9900, 0xFF9800, 0xFF9700, 0xFF9600, 0xFF9500, 0xFF9400, 0xFF9300, 0xFF9200, 0xFF9100, 0xFF9000, 0xFF8F00, 0xFF8E00, 0xFF8D00, 0xFF8C00, 0xFF8B00, 0xFF8A00, 0xFF8900, 0xFF8800, 0xFF8700, 0xFF8600, 0xFF8500, 0xFF8400, 0xFF8300, 0xFF8200, 0xFF8100, 0xFF8000, 0xFF7F00, 0xFF7E00, 0xFF7D00, 0xFF7C00, 0xFF7B00, 0xFF7A00, 0xFF7900, 0xFF7800, 0xFF7700, 0xFF7600, 0xFF7500, 0xFF7400, 0xFF7300, 0xFF7200, 0xFF7100, 0xFF7000, 0xFF6F00, 0xFF6E00, 0xFF6D00, 0xFF6C00, 0xFF6B00, 0xFF6A00, 0xFF6900, 0xFF6800, 0xFF6700, 0xFF6600, 0xFF6500, 0xFF6400, 0xFF6300, 0xFF6200, 0xFF6100, 0xFF6000, 0xFF5F00, 0xFF5E00, 0xFF5D00, 0xFF5C00, 0xFF5B00, 0xFF5A00, 0xFF5900, 0xFF5800, 0xFF5700, 0xFF5600, 0xFF5500, 0xFF5400, 0xFF5300, 0xFF5200, 0xFF5100, 0xFF5000, 0xFF4F00, 0xFF4E00, 0xFF4D00, 0xFF4C00, 0xFF4B00, 0xFF4A00, 0xFF4900, 0xFF4800, 0xFF4700, 0xFF4600, 0xFF4500, 0xFF4400, 0xFF4300, 0xFF4200, 0xFF4100, 0xFF4000, 0xFF3F00, 0xFF3E00, 0xFF3D00, 0xFF3C00, 0xFF3B00, 0xFF3A00, 0xFF3900, 0xFF3800, 0xFF3700, 0xFF3600, 0xFF3500, 0xFF3400, 0xFF3300, 0xFF3200, 0xFF3100, 0xFF3000, 0xFF2F00, 0xFF2E00, 0xFF2D00, 0xFF2C00, 0xFF2B00, 0xFF2A00, 0xFF2900, 0xFF2800, 0xFF2700, 0xFF2600, 0xFF2500, 0xFF2400, 0xFF2300, 0xFF2200, 0xFF2100, 0xFF2000, 0xFF1F00, 0xFF1E00, 0xFF1D00, 0xFF1C00, 0xFF1B00, 0xFF1A00, 0xFF1900, 0xFF1800, 0xFF1700, 0xFF1600, 0xFF1500, 0xFF1400, 0xFF1300, 0xFF1200, 0xFF1100, 0xFF1000, 0xFF0F00, 0xFF0E00, 0xFF0D00, 0xFF0C00, 0xFF0B00, 0xFF0A00, 0xFF0900, 0xFF0800, 0xFF0700, 0xFF0600, 0xFF0500, 0xFF0400, 0xFF0300, 0xFF0200, 0xFF0100, 0xFF0000];
+
+
+
+			let objects = [];
+
+
+			//let starColors = [0xFDB813, 0xfdb91c, 0xfcb103, 0xfdc135, 0xe3a002];
+			let starColors = [0xFDB813, 0xfdb91c, 0xfcb103, 0xfdc135, 0xe3a002, 0xcc3525, 0x852218]
+
+			let camera, orbitControls, scene, renderer, dx, dy, dz, r, d, force, vx, vy, vz, l, w, h, x, y, z, ax, ay, az, parent, starParams, stars, clouds, particles, starParticles, objs, mesh, instancedCount, absorbed, active, vMesh;
+			let play = false; // Load the page without the physics iterating through time			
+			let j = 0; // particle index tracker for instanced mesh
+			const G = 1; // Gravitational constant (fine-tuned for the environment)
+			let cameraTarget = new THREE.Vector3(20, 20, 20);
+			let orbitTarget = new THREE.Vector3(0, 0, 0);
+			let lerpRate = 0.075; // how fast we want to lerp the camera
+			let panCamera = false; // start out not lerping camera
+			let vs = [];
+			let vMean = 0; // average particle velocity
+			let colorIndex = 0;
+			let movables = []; // List to store draggable objects
+			let matrix = new THREE.Matrix4(); // Global matrix for assigning particle positions during each timestep
+			let color = new THREE.Color(); // Global color for assigning particle colors during each timestep
+			let darkMaterial = new THREE.MeshBasicMaterial({color: 0x000000}); // for bloom purposes
+			let lightMaterial = new THREE.MeshStandardMaterial(); // for bloom purposes
+			let box = new THREE.BoxGeometry( 0.085, 0.085, 0.085 ); // base geometry for particle
+			let meshBasic = new THREE.MeshBasicMaterial(); // basic material for meshes
+
+			// Instantiate the scene and set parameters
+			scene = new THREE.Scene();
+			scene.background = new THREE.Color(0x000000);
+
+			// Grid
+			let grid = new THREE.GridHelper(100, 30);
+			grid.name = "grid";
+			scene.add(grid);
+
+			// Instantiate renderer and set parameters
+			renderer = new THREE.WebGLRenderer({ antialias: true });
+			renderer.setPixelRatio( window.devicePixelRatio );
+			renderer.setSize( window.innerWidth, window.innerHeight );
+			document.body.appendChild( renderer.domElement );
+
+
+			// Instantiate camera and set parameters
+			camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 1000 );
+			camera.position.set( 20, 20, 20 );
+
+			// Instantiate orbit orbitControls and set parameters
+			orbitControls = new OrbitControls( camera, renderer.domElement );
+			orbitControls.enableDamping = true;
+			orbitControls.dampingFactor = 0.4;
+			orbitControls.enablePan = false;
+			orbitControls.screenSpacePanning = false;
+			orbitControls.minDistance = 0;
+			orbitControls.maxDistance = 200;
+			orbitControls.maxPolarAngle = (2/3) * (Math.PI) + 0.3;
+
+			scene.add(new THREE.AmbientLight(0xffffff, 1));
+
+const params = {
+  exposure: 2,
+  bloomStrength: 2.5,
+  bloomThreshold: 0,
+  bloomRadius: 10,
+};
+
+const renderScene = new RenderPass( scene, camera );
+
+let bloomPass = new UnrealBloomPass( new THREE.Vector2( window.innerWidth * 2, window.innerHeight ), 0, 0, 0 );
+//bloomPass.exposure = params.exposure;
+bloomPass.threshold = params.bloomThreshold;
+bloomPass.strength = params.bloomStrength;
+//bloomPass.radius = params.bloomRadius;
+
+const bloomComposer = new EffectComposer( renderer );
+bloomComposer.renderToScreen = false;
+bloomComposer.addPass( renderScene );
+bloomComposer.addPass( bloomPass );
+
+const finalPass = new ShaderPass(
+  new THREE.ShaderMaterial( {
+    uniforms: {
+      baseTexture: { value: null },
+      bloomTexture: { value: bloomComposer.renderTarget2.texture }
+    },
+    vertexShader: document.getElementById( 'vertexshader' ).textContent,
+    fragmentShader: document.getElementById( 'fragmentshader' ).textContent,
+    defines: {}
+  } ), "baseTexture"
+);
+finalPass.needsSwap = true;
+
+const finalComposer = new EffectComposer( renderer );
+finalComposer.addPass( renderScene );
+finalComposer.addPass( finalPass );
+
+// experimental vectorized cross-particle position vectors
+let xMesh = [];
+let yMesh = [];
+let zMesh = [];
+
+let vxMesh = [];
+let vyMesh = [];
+let vzMesh = [];
+
+let axMesh = [];
+let ayMesh = [];
+let azMesh = [];
+
+let kxMesh, kyMesh, kzMesh;
+
+
+loadSystem()
+
+
+			// Initialize drag controls
+			const dragControls = new DragControls(movables, camera, renderer.domElement);
+			dragControls.addEventListener( 'hoveron', function () { orbitControls.enabled = false; } );
+			dragControls.addEventListener( 'hoveroff', function () { orbitControls.enabled = true; } );
+
+
+
+			// Add event listeners
+			window.addEventListener("pointerdown", onClick);
+			window.addEventListener("resize", onWindowResize);
+			window.addEventListener("keydown", onKeyPress);
+			document.getElementById("addToSystemButton").onclick = loadSystem;
+
+
+			// Start the animation
+			renderer.setAnimationLoop(animate);
+
+
+
+
+
+
+function onKeyPress(event) {
+
+		if (event.keyCode == 71) {
+			play = !play;
+		} else if (event.keyCode == 81) {
+			let gridObject = scene.getObjectByName("grid");
+			let gridVisibility = gridObject.visible;
+			gridObject.visible = !gridVisibility;			
+		} else if (event.keyCode == 67) {
+			panCamera = true;
+		}
+	}
+
+function onClick() {
+	panCamera = false;
+}
+
+function onWindowResize() {
+	camera.aspect = window.innerWidth / window.innerHeight;
+	camera.updateProjectionMatrix();
+	renderer.setSize( window.innerWidth, window.innerHeight );
+}
+
+
+
+function animate() {
+
+	if (panCamera) {
+		camera.position.lerp(cameraTarget, lerpRate);
+		orbitControls.target.lerp(orbitTarget, lerpRate);
+	}
+
+	// 20230130 1040pm got instancedmesh showing with meshstandardmaterial
+	// now need to get the following 6 lines of code to correctly selectively bloom
+
+	//grid.colorGrid = new THREE.Color(0x000000)
+
+	// hack for now !! but it works
+	scene.remove(grid)
+
+	mesh.material = darkMaterial;
+	scene.background.set(0x000000);
+	bloomComposer.render();
+	mesh.material = lightMaterial;
+			scene.add(grid);
+
+	scene.background.set(0x000000);
+	finalComposer.render();
+
+	// Skip the move() function if paused
+	if (!play) {
+		return;
+	}
+
+	// Update physics
+	move();
+
+
+}
+
+
+
+
+function generate_dust(dust) {
+
+	xMesh = [];
+	yMesh = [];
+	zMesh = [];
+
+	vxMesh = [];
+	vyMesh = [];
+	vzMesh = [];
+
+	let particles = [];
+
+	if (dust.geometry === "spherical") {
+		l = dust.radius * 2;
+		w = dust.radius * 2;
+		h = dust.radius * 2;
+	} else {
+		l = dust.dimensions[0];
+		w = dust.dimensions[1];
+		h = dust.dimensions[2];
+	}
+
+	// For each i in the particle count
+	for (let i = 0; i < dust.particles; i++) {
+
+		// Randomly generate (x, y, z) particle coordinates 
+		// within the rectangular prism of dimensions (l, w, h)
+		// centered at (x, y, z) = 0
+		x = (Math.random() - 0.5) * l;
+		y = (Math.random() - 0.5) * w;
+		z = (Math.random() - 0.5) * h;
+
+		// If the geometry is spherical
+		if (dust.geometry === "spherical") {
+
+			// Compute the distance between the center of the star and the particle
+			d = Math.sqrt((x * x) + (y * y) + (z * z));
+
+			// Keep recomputing (x, y, z) particle coordinates (and corresponding distance to origin) until they are within desired radius
+			while (d > dust.radius) {
+
+				x = (Math.random() - 0.5) * l;
+				y = (Math.random() - 0.5) * w;
+				z = (Math.random() - 0.5) * h;
+
+				d = Math.sqrt((x * x) + (y * y) + (z * z));
+
+			}
+		}
+
+
+		xMesh.push(x + dust.position[0]);
+		yMesh.push(y + dust.position[1]);
+		zMesh.push(z + dust.position[2]);
+
+		vxMesh.push(dust.velocity[0]);
+		vyMesh.push(dust.velocity[1]);
+		vzMesh.push(dust.velocity[1]);
+
+	}
+
+	instancedCount = xMesh.length; // How many instances in mesh
+
+	mesh = new THREE.InstancedMesh(box, lightMaterial, instancedCount); // Create an instanced mesh to display all the particles
+
+	let i = 0;
+
+	// Place each particle in the scene
+	for (const e of xMesh) {
+
+		// Change the position of the matrix object to the position of the current particle
+		// Change the matrix of the nth mesh object to the defined matrix object
+		matrix.setPosition(e, yMesh[i], zMesh[i]);
+		mesh.setMatrixAt(i, matrix)
+		mesh.setColorAt(i, color.setHex( colors[255] ));
+
+		i += 1;
+
+	}
+
+	scene.add(mesh);
+
+	let object = {
+		type: "dust",
+		xMesh: xMesh,
+		yMesh: yMesh,
+		zMesh: zMesh,
+		vxMesh: vxMesh,
+		vyMesh: vyMesh,
+		vzMesh: vzMesh,
+		meshObject: mesh
+	}
+
+	objects.push(object);
+
+}
+
+
+function generate_star(star) {
+
+	xMesh = [];
+	yMesh = [];
+	zMesh = [];
+
+	vxMesh = [];
+	vyMesh = [];
+	vzMesh = [];
+
+	kxMesh = [];
+	kyMesh = [];
+	kzMesh = [];
+
+	l = star.radius * 2;
+	w = star.radius * 2;
+	h = star.radius * 2;
+
+	// For each i in the particle count
+	for (let i = 0; i < (5000 * star.radius * star.radius * star.radius); i++) {
+
+		// Randomly generate (x, y, z) particle coordinates 
+		// within the rectangular prism of dimensions (l, w, h)
+		// centered at (x, y, z) = 0
+		x = (Math.random() - 0.5) * l;
+		y = (Math.random() - 0.5) * w;
+		z = (Math.random() - 0.5) * h;
+
+		// Compute the distance between the center of the star and the particle
+		d = Math.sqrt((x * x) + (y * y) + (z * z));
+
+		// Keep recomputing (x, y, z) particle coordinates (and corresponding distance to origin) until they are within desired radius
+		while (d > star.radius) {
+
+			x = (Math.random() - 0.5) * l;
+			y = (Math.random() - 0.5) * w;
+			z = (Math.random() - 0.5) * h;
+
+			d = Math.sqrt((x * x) + (y * y) + (z * z));
+
+		}
+
+		if (d > (star.radius * 0.8)) {
+
+			xMesh.push(x);
+			yMesh.push(y);
+			zMesh.push(z);
+
+			vxMesh.push((Math.random() - 0.5) * 0.05);
+			vyMesh.push((Math.random() - 0.5) * 0.05);
+			vzMesh.push((Math.random() - 0.5) * 0.05);
+
+			kxMesh.push((Math.random() * (0.01 - 0.001) + 0.001) * star.radius);
+			kyMesh.push((Math.random() * (0.01 - 0.001) + 0.001) * star.radius);
+			kzMesh.push((Math.random() * (0.01 - 0.001) + 0.001) * star.radius);
+
+		}
+	}
+
+
+	instancedCount = xMesh.length; // How many instances in mesh
+
+	mesh = new THREE.InstancedMesh(box, lightMaterial, instancedCount); // Create an instanced mesh to display all the particles
+
+	let i = 0;
+	// Place each particle in the scene
+	for (const e of xMesh) {
+
+		// Change the position of the matrix object to the position of the current particle
+		// Change the matrix of the nth mesh object to the defined matrix object
+		matrix.setPosition(e, yMesh[i], zMesh[i]);
+		mesh.setMatrixAt(i, matrix)
+		mesh.setColorAt(i, color.setHex( colors[255] ));
+
+		i += 1;
+
+	}
+
+	scene.add(mesh);
+
+	let object = {
+		type: "dust",
+		xMesh: xMesh,
+		yMesh: yMesh,
+		zMesh: zMesh,
+		vxMesh: vxMesh,
+		vyMesh: vyMesh,
+		vzMesh: vzMesh,
+		kxMesh: kxMesh,
+		kyMesh: kyMesh,
+		kzMesh: kzMesh,
+		x: star.position[0],
+		y: star.position[1],
+		z: star.position[2],
+		vx: star.velocity[0],
+		vy: star.velocity[1],
+		vz: star.velocity[2],
+		mass: star.mass,
+		radius: star.radius,
+		fixed: star.fixed,
+		meshObject: mesh
+	}
+
+	objects.push(object);
+
+
+}				
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+function loadSystem() {
+
+
+	let dust = {
+		type: "dust",
+		position: [0, 0, 35], 
+		velocity: [0.2, 0, 0],
+		dimensions: [1, 1, 50],
+		particles: 100000, 
+		geometry: "regular"
+	}
+
+	let star = {
+		type: "star",
+		position: [0, 0, 0],
+  	velocity: [0, 0, 0],
+  	fixed: true,
+  	radius: 2,
+  	mass: 1,
+	}
+
+	// 20230212 one list to store all the dust clouds, stars, and planets in the scene
+
+
+
+
+	generate_dust(dust);
+	generate_star(star);
+
+
+
+
+
+	// [starObject, starParticles, starInstancedMesh]
+	stars = [];
+
+	for (const starParam of starParams) {
+
+		// Generate an array of particle objects
+		let starParticles = new generate_particles([starParam]);
+		
+		// Generate an InstancedMesh to hold these particles
+		let starMesh = new THREE.InstancedMesh(box, meshBasic, starParticles.length);
+
+		stars.push({params: starParam, particles: starParticles, mesh: starMesh})
+
+	}
+
+
+	for (const star of stars) {
+
+		for (const particle of star.particles) {
+
+			// Change the position of the matrix object to the position of the current particle
+			matrix.setPosition(particle.x, particle.y, particle.z);
+			
+			// Change the matrix of the nth mesh object to the defined matrix object
+			star.mesh.setMatrixAt(particle.index, matrix)
+			star.mesh.setColorAt(particle.index, color.setHex( starColors[Math.floor(Math.random() * starColors.length)] ));
+			star.mesh.position.set(star.params.x, star.params.y, star.params.z);
+			star.mesh.name = star.params.id
+
+		}
+
+		scene.add(star.mesh);
+		movables.push(star.mesh)
+
+		// Needed to update InstancedMesh object
+		star.mesh.instanceMatrix.needsUpdate = true;
+		star.mesh.instanceColor.needsUpdate = true;
+
+	}
+
+}
+
+
+
+function vecAdd(a, b) {
+	return a.map((e, i) => e + b[i])
+}
+
+function vecSub(a, b) {
+	return a.map((e, i) => e - b[i])
+}
+
+function vecMult(a, b) {
+	return a.map((e, i) => e * b[i])
+}
+
+function vecDiv(a, b) {
+	return a.map((e, i) => e / b[i])
+}
+
+
+
+
+
+// Update the physics of each particle
+function move() {
+
+	// Move non-fixed stars
+
+	for (const star of stars) {
+
+		if (star.params.fixed === true) {
+			continue;
+		}
+
+		ax = 0;
+		ay = 0;
+		az = 0;
+
+		for (const starOther of stars) {
+
+			if (starOther.params.id === star.params.id) {
+				continue;
+			}
+
+			dx = starOther.mesh.position.x - star.mesh.position.x;
+			dy = starOther.mesh.position.y - star.mesh.position.y;
+			dz = starOther.mesh.position.z - star.mesh.position.z;
+			
+			r = Math.sqrt((dx * dx) + (dy * dy) + (dz * dz));
+
+			force = (G * star.params.mass * starOther.params.mass) / (r * r);
+
+			ax += (force * dx) / r;
+			ay += (force * dy) / r;
+			az += (force * dz) / r;
+
+
+		}
+
+		star.params.vx += ax;
+		star.params.vy += ay;
+		star.params.vz += az;
+
+		star.mesh.position.x += star.params.vx;
+		star.mesh.position.y += star.params.vy;
+		star.mesh.position.z += star.params.vz;
+
+	};
+
+
+	// Execute SHM for star particles
+
+	for (const star of stars) {
+		
+		for (const particle of star.particles) {
+
+			ax = -particle.kx * (particle.xLocal - particle.x0);
+			ay = -particle.ky * (particle.yLocal - particle.y0);
+			az = -particle.kz * (particle.zLocal - particle.z0);
+
+			particle.vx += ax;
+			particle.vy += ay;
+			particle.vz += az;
+
+			particle.xLocal += particle.vx;
+			particle.yLocal += particle.vy;
+			particle.zLocal += particle.vz;
+
+			matrix.setPosition(particle.xLocal, particle.yLocal, particle.zLocal);
+			star.mesh.setMatrixAt(particle.index, matrix);
+
+		}
+
+		// Needed to update InstancedMesh object
+		star.mesh.instanceMatrix.needsUpdate = true;
+		star.mesh.instanceColor.needsUpdate = true;
+
+	}
+
+
+	// waypoint
+
+	for (const star of stars) {
+
+		dx = xMesh.map(e => star.mesh.position.x - e);
+		dy = yMesh.map(e => star.mesh.position.y - e);
+		dz = zMesh.map(e => star.mesh.position.z - e);
+	
+		r = dx.map((e, i) => (e * e) + (dy[i] * dy[i]) + (dz[i] * dz[i]))
+
+		absorbed = r.map(e => e < star.params.radius)
+
+		active = absorbed.map(e => !e)
+
+		force = r.map((e, i) => G * star.params.mass / (e * e));
+		
+		// we need some kind of += here, this will not work for multiple stars
+		axMesh = force.map((e, i) => (e * dx[i]) / r[i])
+		ayMesh = force.map((e, i) => (e * dy[i]) / r[i])
+		azMesh = force.map((e, i) => (e * dz[i]) / r[i])
+
+	}
+
+	vxMesh = vxMesh.map((e, i) => e + axMesh[i])
+	vyMesh = vxMesh.map((e, i) => e + ayMesh[i])
+	vzMesh = vxMesh.map((e, i) => e + azMesh[i])
+
+	xMesh = xMesh.map((e, i) => e + vxMesh[i])
+	yMesh = yMesh.map((e, i) => e + vyMesh[i])
+	zMesh = zMesh.map((e, i) => e + vzMesh[i])
+
+	vMesh = vxMesh.map((e, i) => (e * e) + (vyMesh[i] * vyMesh[i]) + (vzMesh[i] * vzMesh[i]));
+
+
+	vMeshMean = vMesh.reduce((a, b) => a + b) / vMesh.length;
+
+	// Use sigmoid function to compute new color based on particle velocity and average velocity of the system
+	vMeshColors = vMesh.map(e => colors[Math.floor(511 / (1 + Math.exp(-10 * (e - vMeshMean))))])
+
+	// Iterate through every particle
+	let i = 0;
+	for (const e of xMesh) {
+
+		if (active[i] === false) {
+				matrix.setPosition(0, 0, 0);
+				mesh.setMatrixAt(i, matrix);
+		}
+
+		// Update particle position and color
+		matrix.setPosition(xMesh[i], yMesh[i], zMesh[i]);
+		mesh.setMatrixAt(i, matrix);
+		mesh.setColorAt(i, color.setHex( vMeshColors[i] ));
+
+	}
+
+
+	// Needed to update InstancedMesh object
+	mesh.instanceMatrix.needsUpdate = true;
+	mesh.instanceColor.needsUpdate = true;
+	
+}
+
+
+
+		</script>
+	</body>
+</html>
