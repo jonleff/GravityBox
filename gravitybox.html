@@ -500,54 +500,8 @@ let yHat = new THREE.Vector3(0, 1, 0);
 // Update the physics of each particle
 function move() {
 
-	// Move non-fixed stars
-
-	for (const star of stars) {
-
-
-		if (star.params.fixed === true) {
-			continue;
-		}
-
-		ax = 0;
-		ay = 0;
-		az = 0;
-
-		for (const starOther of stars) {
-
-			if (starOther.params.id === star.params.id) {
-				continue;
-			}
-
-			dx = starOther.mesh.position.x - star.mesh.position.x;
-			dy = starOther.mesh.position.y - star.mesh.position.y;
-			dz = starOther.mesh.position.z - star.mesh.position.z;
-			
-			r = Math.sqrt((dx * dx) + (dy * dy) + (dz * dz));
-
-			force = (G * star.params.mass * starOther.params.mass) / (r * r);
-
-			ax += (force * dx) / r;
-			ay += (force * dy) / r;
-			az += (force * dz) / r;
-
-
-		}
-
-		star.params.vx += ax;
-		star.params.vy += ay;
-		star.params.vz += az;
-
-
-		star.mesh.position.x += star.params.vx;
-		star.mesh.position.y += star.params.vy;
-		star.mesh.position.z += star.params.vz;
-
-	};
-
 
 	// Execute SHM for star particles
-
 	for (const star of stars) {
 		
 		for (const particle of star.particles) {
@@ -575,26 +529,6 @@ function move() {
 
 	}
 
-
-
-    // Calculate mouse position in normalized device coordinates (NDC)
-
-    // Raycast from the camera to the mouse position
-    //raycaster.setFromCamera(screenPosition, camera);
-
-    // Find inter point with a plane at z = 0
-
-
-    /*
-    // Release particles at the inter point
-    for (let i = 0; i < numParticles; i++) {
-        if (!particlePositions[i].visible) {
-
-        }
-    }
-    */
-
-
 	// List to keep track of velocities for each particle
 	vs = [];
 
@@ -602,12 +536,13 @@ function move() {
 	for (const particle of particles) {
 
 		// Skip the physics logic for any deactivated particles
-		if (!particle.active && painting && Math.random() < 0.03) {
+		if (painting && Math.random() < 0.01) {
 
 			// Distance between injection point and origin
            	let R = inter.distanceTo(origin);
 
            	// Normalized vector pointing from origin to injection point
+           	// WHY CANT THIS BE NORMALIZED?????
            	let rHat = inter.sub(origin);
 
            	// Normalized vector to store initial velocity direction
@@ -634,11 +569,8 @@ function move() {
             // Update the particle's position in the instanced mesh
             mesh.setMatrixAt(particle.index, new THREE.Matrix4().makeTranslation(particle.x, particle.y, particle.z));
 
-
-			console.log(particle.index)
-
 			// do we want to process right upon instantiation?
-			continue
+			//continue
 
 		}
 
