@@ -100,6 +100,14 @@ let j = 0;
 // Gravitational constant (fine-tuned for the environment)
 const G = 1;
 
+
+
+// Controls spray brush width
+let phi = 1;
+
+// Controls ellipse curvature
+let e = 1;
+
 let cameraTarget = new THREE.Vector3(20, 20, 20);
 let orbitTarget = new THREE.Vector3(0, 0, 0);
 let lerpRate = 0.075;
@@ -604,11 +612,7 @@ function move() {
 		// Skip the physics logic for any deactivated particles
 		if (!particle.active && painting && Math.random() < 0.01) {
 			
-			// Controls spray brush width
-			let phi = 0.2;
 
-			// Controls ellipse curvature
-			let e = 1.2;
 
            	const radius = intersection.distanceTo(new THREE.Vector3(0, 0, 0));
 
