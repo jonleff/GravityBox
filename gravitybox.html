@@ -535,7 +535,7 @@ function move() {
 	// Iterate through every particle
 	for (const particle of particles) {
 
-		// Skip the physics logic for any deactivated particles
+		// All particles are recyclable
 		if (painting && Math.random() < 0.01) {
 
 			// Distance between injection point and origin
@@ -569,8 +569,6 @@ function move() {
             // Update the particle's position in the instanced mesh
             mesh.setMatrixAt(particle.index, new THREE.Matrix4().makeTranslation(particle.x, particle.y, particle.z));
 
-			// do we want to process right upon instantiation?
-			//continue
 
 		}
 
