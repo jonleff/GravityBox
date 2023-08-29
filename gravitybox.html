@@ -100,7 +100,7 @@ let j = 0;
 // Gravitational constant (fine-tuned for the environment)
 const G = 1;
 
-
+let numParticles = 25000;
 
 // Controls spray brush width
 let phi = 1;
@@ -186,7 +186,7 @@ let movables = [];
 
 
 
-
+let origin = new THREE.Vector3(0, 0, 0)
 
 
 let starParams, stars, clouds, particles, starParticles, objs, mesh, instancedCount;
@@ -266,7 +266,7 @@ function loadSystem() {
 	// Generate a particle system
 	particles = [];
 
-	for (let i = 0; i < 25000; i++) {
+	for (let i = 0; i < numParticles; i++) {
 
 		particles.push({
 			index: i,
@@ -289,7 +289,7 @@ function loadSystem() {
 
 
 	// Count how many instances to feed into our particle mesh
-	instancedCount = 25000;
+	instancedCount = numParticles;
 
 	// Create a box instance to act as the base object for the instanced Mesh
 	const particleGeometry = new THREE.BoxGeometry(0.085, 0.085, 0.085);
@@ -492,6 +492,9 @@ function generate_particles(params) {
 }
 
 
+let yHat = new THREE.Vector3(0, 1, 0);
+
+
 // need to fix up the star logic
 
 // Update the physics of each particle
@@ -579,11 +582,11 @@ function move() {
     // Raycast from the camera to the mouse position
     //raycaster.setFromCamera(screenPosition, camera);
 
-    // Find intersection point with a plane at z = 0
+    // Find inter point with a plane at z = 0
 
 
     /*
-    // Release particles at the intersection point
+    // Release particles at the inter point
     for (let i = 0; i < numParticles; i++) {
         if (!particlePositions[i].visible) {
 
@@ -595,42 +598,35 @@ function move() {
 	// List to keep track of velocities for each particle
 	vs = [];
 
-	/*
-	if (painting) {
-
-		console.log("In painting mode")
-
-	} else {
-		console.log("Not in painting mode")
-	}
-	*/
-
-
 	// Iterate through every particle
 	for (const particle of particles) {
 
 		// Skip the physics logic for any deactivated particles
-		if (!particle.active && painting && Math.random() < 0.01) {
-			
+		if (!particle.active && painting && Math.random() < 0.03) {
 
+			// Distance between injection point and origin
+           	let R = inter.distanceTo(origin);
 
-           	const radius = intersection.distanceTo(new THREE.Vector3(0, 0, 0));
+           	// Normalized vector pointing from origin to injection point
+           	let rHat = inter.sub(origin);
+
+           	// Normalized vector to store initial velocity direction
+			let v0Hat = new THREE.Vector3();
+			v0Hat.crossVectors(yHat, rHat).normalize();
 
             // Calculate the tangential velocity for circular orbit
-            const tangentialVelocity = e * Math.sqrt((1 * 1) / radius);
-
-            // Calculate the initial velocity direction perpendicular to the radius
-            const initialVelocity = new THREE.Vector3(-intersection.y, intersection.x, 0).normalize();
+            // Scale this velocity by user inputted eccentricity parameter
+            const vTangent = e * Math.sqrt(1 / R);
 
             // Set the initial velocity with the magnitude of tangential velocity
-            particle.vx = initialVelocity.x * tangentialVelocity;
-            particle.vy = initialVelocity.y * tangentialVelocity;
-            particle.vz = 0; // Assuming a 2D orbit, so no z-velocity
+            particle.vx = v0Hat.x * vTangent;
+            particle.vy = 0
+            particle.vz = v0Hat.z * vTangent;
 
             // Set the particle's position
-            particle.x = intersection.x + (phi * Math.random())
-            particle.y = intersection.y + (phi * Math.random())
-            particle.z = intersection.z + (phi * Math.random())
+            particle.x = inter.x + (phi * Math.random())
+            particle.y = inter.y + (phi * Math.random())
+            particle.z = inter.z + (phi * Math.random())
 
             // Mark the particle as active
             particle.active = true;
@@ -784,16 +780,22 @@ window.addEventListener('keyup', (event) => {
 
 
 
-const zPlaneGeometry = new THREE.PlaneGeometry(200, 200); // You can adjust the size as needed
-const zPlaneMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 0 });
-const zPlaneObject = new THREE.Mesh(zPlaneGeometry, zPlaneMaterial);
-zPlaneObject.position.set(0, 0, 0); // Position the plane at z = 0
-scene.add(zPlaneObject);
+const yPlaneGeometry = new THREE.PlaneGeometry(200, 200); // You can adjust the size as needed
+const yPlaneMaterial = new THREE.MeshBasicMaterial({
+	color: 0x00ff00, 
+	transparent: true, 
+	opacity: 0,
+	side: THREE.DoubleSide
+});
+const yPlaneObject = new THREE.Mesh(yPlaneGeometry, yPlaneMaterial);
+yPlaneObject.rotateX(Math.PI / 2); // Rotate the plane 90 degrees around the x-axis to make it a Y-plane
+yPlaneObject.position.set(0, 0, 0); // Position the plane at z = 0
+scene.add(yPlaneObject);
 
 // Define raycaster
 let raycaster = new THREE.Raycaster();
 let mouse = new THREE.Vector2(); // Store normalized mouse coordinates
-let intersection = new THREE.Vector3();
+let inter = new THREE.Vector3();
 
 // Attach mousemove event listener to the window
 canvas.addEventListener("mousemove", (event) => {
@@ -804,15 +806,15 @@ canvas.addEventListener("mousemove", (event) => {
     // Update the raycaster's origin and direction based on the mouse position
     raycaster.setFromCamera(mouse, camera);
 
-    // Perform raycasting to find intersection with z-plane at z = 0
-    const intersects = raycaster.intersectObject(zPlaneObject); // Replace 'planeObject' with the object representing your z-plane
+    // Perform raycasting to find inter with z-plane at z = 0
+    const intersects = raycaster.intersectObject(yPlaneObject); // Replace 'planeObject' with the object representing your z-plane
 
-    // Check if there is an intersection
+    // Check if there is an inter
     if (intersects.length > 0) {
-        intersection = intersects[0].point;
-        console.log("Intersection Point:", intersection);
+        inter = intersects[0].point;
+        console.log("inter Point:", inter);
         
-        // You can use the 'intersection' for your logic here
+        // You can use the 'inter' for your logic here
     }
 });
 
