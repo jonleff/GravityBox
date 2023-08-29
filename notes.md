@@ -1,3 +1,13 @@
+# Fixed Path vs Orbits
+
+If multiple stars, the stars are fixed and they follow a predetermined opath
+If one star and zero or more planets, the singular star is movable
+
+So we can add planets at will.
+
+
+# Old Notes
+
 // Sample simulation setup code
 /*
 
