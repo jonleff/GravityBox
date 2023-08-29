@@ -108,6 +108,9 @@ let phi = 1;
 // Controls ellipse curvature
 let e = 1;
 
+// Controls brush density
+let brushDensity = 0.01;
+
 let cameraTarget = new THREE.Vector3(20, 20, 20);
 let orbitTarget = new THREE.Vector3(0, 0, 0);
 let lerpRate = 0.075;
@@ -536,7 +539,7 @@ function move() {
 	for (const particle of particles) {
 
 		// All particles are recyclable
-		if (painting && Math.random() < 0.01) {
+		if (painting && Math.random() < brushDensity) {
 
 			// Distance between injection point and origin
            	let R = inter.distanceTo(origin);
