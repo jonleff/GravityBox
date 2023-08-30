@@ -89,7 +89,24 @@ let starColors = [0xFDB813, 0xfdb91c, 0xfcb103, 0xfdc135, 0xe3a002];
 
 	// Instantiate variables
 let camera, orbitControls, scene, renderer, dx, dy, dz, r, d, force;
-let vx, vy, vz, l, w, h, x, y, z, ax, ay, az;
+let v_x, v_y, v_z, l, w, h, x, y, z, a_x, a_y, a_z;
+
+
+let yHat_x = 0;
+let yHat_y = 1;
+let yHat_z = 0;
+
+let starCOM_x = 0;
+let starCOM_y = 0;
+let starCOM_z = 0;
+let starMassSum = 0;
+
+
+let r_x, r_y, r_z;
+let phi, theta;
+
+let starPosition;
+let massWeightedStarPosition;
 
 // Load the page without the physics iterating through time
 let play = false;
@@ -105,11 +122,13 @@ let numParticles = 25000;
 // Controls spray brush width
 let brushWidth = 1;
 
+// Controls brush density
+let brushDensity = 0.8;
+
 // Controls ellipse curvature
 let e = 1;
 
-// Controls brush density
-let brushDensity = 0.01;
+
 
 let cameraTarget = new THREE.Vector3(20, 20, 20);
 let orbitTarget = new THREE.Vector3(0, 0, 0);
@@ -165,7 +184,6 @@ orbitControls.maxPolarAngle = (2/3) * (Math.PI) + 0.3;
 let grid = new THREE.GridHelper(100, 30);
 grid.name = "grid";
 scene.add(grid);
-
 
 
 // experimental
@@ -247,9 +265,9 @@ function loadSystem() {
 		starParam.y = starParam.position[1];
 		starParam.z = starParam.position[2];
 
-		starParam.vx = starParam.velocity[0];
-		starParam.vy = starParam.velocity[1];
-		starParam.vz = starParam.velocity[2];
+		starParam.v_x = starParam.velocity[0];
+		starParam.v_y = starParam.velocity[1];
+		starParam.v_z = starParam.velocity[2];
 
 		starParam.id = k;
 		k += 1;
@@ -271,9 +289,9 @@ function loadSystem() {
 			z: 0,
 
 			// Initial velocity
-			vx: 0,
-			vy: 0,
-			vz: 0,
+			v_x: 0,
+			v_y: 0,
+			v_z: 0,
 
 			// Speed
 			v: 0,
@@ -349,6 +367,7 @@ function loadSystem() {
 			star.mesh.name = star.params.id
 
 		}
+
 		scene.add(star.mesh);
 		movables.push(star.mesh);
 
@@ -432,15 +451,15 @@ function generate_particles(params) {
 
 
 		// Initial velocity of particle is initial velocity of the cloud, by construction
-		vx = params.velocity[0];
-		vy = params.velocity[1];
-		vz = params.velocity[2];
+		v_x = params.velocity[0];
+		v_y = params.velocity[1];
+		v_z = params.velocity[2];
 
 		// Randomly initialize velocity if star particle
 		if (params.type === "star") {
-			vx = (Math.random() - 0.5) * 0.05;
-			vy = (Math.random() - 0.5) * 0.05;
-			vz = (Math.random() - 0.5) * 0.05;
+			v_x = (Math.random() - 0.5) * 0.05;
+			v_y = (Math.random() - 0.5) * 0.05;
+			v_z = (Math.random() - 0.5) * 0.05;
 		}
 
 		if (((params.type == "star") && (d > (params.radius * 0.8))) || (params.type != "star")) {
@@ -470,9 +489,9 @@ function generate_particles(params) {
 				z: z + params.position[2],
 
 				// Initial velocity
-				vx: vx,
-				vy: vy,
-				vz: vz,
+				v_x: v_x,
+				v_y: v_y,
+				v_z: v_z,
 
 				// Speed
 				v: 0,
@@ -490,18 +509,7 @@ function generate_particles(params) {
 
 
 
-let yHat_x = 0;
-let yHat_y = 1;
-let yHat_z = 0;
 
-let starCOM_x = 0;
-let starCOM_y = 0;
-let starCOM_z = 0;
-let starMassSum = 0;
-
-let starPosition;
-let massWeightedStarPosition;
-// need to fix up the star logic
 
 // Update the physics of each particle
 function move() {
@@ -523,17 +531,17 @@ function move() {
 
 		for (const particle of star.particles) {
 
-			ax = -particle.kx * (particle.xLocal - particle.x0);
-			ay = -particle.ky * (particle.yLocal - particle.y0);
-			az = -particle.kz * (particle.zLocal - particle.z0);
+			a_x = -particle.kx * (particle.xLocal - particle.x0);
+			a_y = -particle.ky * (particle.yLocal - particle.y0);
+			a_z = -particle.kz * (particle.zLocal - particle.z0);
 
-			particle.vx += ax;
-			particle.vy += ay;
-			particle.vz += az;
+			particle.v_x += a_x;
+			particle.v_y += a_y;
+			particle.v_z += a_z;
 
-			particle.xLocal += particle.vx;
-			particle.yLocal += particle.vy;
-			particle.zLocal += particle.vz;
+			particle.xLocal += particle.v_x;
+			particle.yLocal += particle.v_y;
+			particle.zLocal += particle.v_z;
 
 			matrix.setPosition(particle.xLocal, particle.yLocal, particle.zLocal);
 			star.mesh.setMatrixAt(particle.index, matrix);
@@ -551,8 +559,6 @@ function move() {
 	starCOM_y /= starMassSum;
 	starCOM_z /= starMassSum;
 
-
-
 	// List to keep track of velocities for each particle
 	vs = [];
 
@@ -562,20 +568,22 @@ function move() {
 		// All particles are recyclable
 		if (painting && Math.random() < brushDensity) {
 
-           	// Normalized vector pointing from origin to injection point
-           	// WHY CANT THIS BE NORMALIZED?????
-           	let rHat_x = inter.x - starCOM_x;
-           	let rHat_y = inter.y - starCOM_y;
-           	let rHat_z = inter.z - starCOM_z;
+			// Orbital injection logic
 
-			// Distance between injection point and origin
-           	let R = Math.sqrt((rHat_x * rHat_x) + (rHat_y * rHat_y) + (rHat_z * rHat_z));
+           	// Vector pointing from stellar COM to injection point
+           	// WHY CANT THIS BE NORMALIZED?????
+           	r_x = inter.x - starCOM_x;
+           	r_y = inter.y - starCOM_y;
+           	r_z = inter.z - starCOM_z;
+
+			// Distance between stellar COM and injection point
+           	let rMag = Math.sqrt((r_x * r_x) + (r_y * r_y) + (r_z * r_z));
 
            	// Normalized vector to store initial velocity direction
-           	// v0Hat is cross product of yHat and rHat
-           	let v0Hat_x = (yHat_y * rHat_z) - (yHat_z * rHat_y);
-           	let v0Hat_y = (yHat_z * rHat_x) - (yHat_x * rHat_z);
-           	let v0Hat_z = (yHat_x * rHat_y) - (yHat_y * rHat_x);
+           	// v0Hat is cross product of yHat and r
+           	let v0Hat_x = (yHat_y * r_z) - (yHat_z * r_y);
+           	let v0Hat_y = (yHat_z * r_x) - (yHat_x * r_z);
+           	let v0Hat_z = (yHat_x * r_y) - (yHat_y * r_x);
 
 			// Normalize v0Hat
 			let v0HatMag = Math.sqrt((v0Hat_x * v0Hat_x) + (v0Hat_y * v0Hat_y) + (v0Hat_z * v0Hat_z));
@@ -583,25 +591,18 @@ function move() {
            	v0Hat_y /= v0HatMag;
            	v0Hat_z /= v0HatMag;
 
-
             // Calculate the tangential velocity for circular orbit
             // Scale this velocity by user inputted eccentricity parameter
-            const vTan = e * Math.sqrt(1 / R);
+            let vTan = e * Math.sqrt(1 / rMag);
 
             // Set the initial velocity with the magnitude of tangential velocity
-            particle.vx = v0Hat_x * vTan;
-            particle.vy = v0Hat_y * vTan;
-            particle.vz = v0Hat_z * vTan;
-
-            // Set the particle's position
-            //particle.x = inter.x + (phi * Math.random())
-            //particle.y = inter.y + (phi * Math.random())
-            //particle.z = inter.z + (phi * Math.random())
-
+            particle.v_x = v0Hat_x * vTan;
+            particle.v_y = v0Hat_y * vTan;
+            particle.v_z = v0Hat_z * vTan;
 
 			// Generate random spherical coordinates
-			const phi = Math.random() * Math.PI * 2; // Azimuthal angle (0 to 2*pi)
-			const theta = Math.acos(2 * Math.random() - 1); // Polar angle (0 to pi)
+			phi = Math.random() * Math.PI * 2; // azimuthal angle (0 to 2*Pi)
+			theta = Math.acos(2 * Math.random() - 1); // polar angle (0 to Pi)
 
 			// Convert spherical coordinates to Cartesian coordinates
 			particle.x = inter.x + (brushWidth * Math.sin(theta) * Math.cos(phi));
@@ -614,7 +615,6 @@ function move() {
             // Update the particle's position in the instanced mesh
             mesh.setMatrixAt(particle.index, new THREE.Matrix4().makeTranslation(particle.x, particle.y, particle.z));
 
-
 		}
 
 		let R = Math.sqrt((particle.x * particle.x) + (particle.y * particle.y) + (particle.z * particle.z));
@@ -623,38 +623,26 @@ function move() {
 		if (R > 100) {
 			particle.active = false;
 			matrix.setPosition(0, 0, 0);
-
-			// Reset velocities since deactivated particles are recyclable when painting
-			particle.vx = 0
-			particle.vy = 0
-			particle.vz = 0
-
 			mesh.setMatrixAt(particle.index, matrix);
 			continue;
 		}
 
 		// Reset accelerations
-		ax = 0;
-		ay = 0;
-		az = 0;
+		a_x = 0;
+		a_y = 0;
+		a_z = 0;
 
 		for (const star of stars) {
 
-			dx = star.mesh.position.x - particle.x;
-			dy = star.mesh.position.y - particle.y;
-			dz = star.mesh.position.z - particle.z;
+			r_x = star.mesh.position.x - particle.x;
+			r_y = star.mesh.position.y - particle.y;
+			r_z = star.mesh.position.z - particle.z;
 		
-			r = Math.sqrt((dx * dx) + (dy * dy) + (dz * dz));
+			r = Math.sqrt((r_x * r_x) + (r_y * r_y) + (r_z * r_z));
 
 			// Sucked into star
 			if (r < star.params.radius) {
 				particle.active = false;
-
-				// Reset velocities since deactivated particles are recyclable when painting
-				particle.vx = 0
-				particle.vy = 0
-				particle.vz = 0
-
 				matrix.setPosition(0, 0, 0);
 				mesh.setMatrixAt(particle.index, matrix);
 				break;
@@ -662,22 +650,22 @@ function move() {
 
 			force = (G * star.params.mass) / (r * r);
 
-			ax += (force * dx) / r;
-			ay += (force * dy) / r;
-			az += (force * dz) / r;
+			a_x += (force * r_x) / r;
+			a_y += (force * r_y) / r;
+			a_z += (force * r_z) / r;
 
 
 		}
 
-		particle.vx += ax;
-		particle.vy += ay;
-		particle.vz += az;
+		particle.v_x += a_x;
+		particle.v_y += a_y;
+		particle.v_z += a_z;
 
-		particle.x += particle.vx;
-		particle.y += particle.vy;
-		particle.z += particle.vz;
+		particle.x += particle.v_x;
+		particle.y += particle.v_y;
+		particle.z += particle.v_z;
 
-		particle.v = Math.sqrt((particle.vx * particle.vx) + (particle.vy * particle.vy) + (particle.vz * particle.vz));
+		particle.v = Math.sqrt((particle.v_x * particle.v_x) + (particle.v_y * particle.v_y) + (particle.v_z * particle.v_z));
 
 		vs.push(particle.v);
 		
@@ -858,8 +846,9 @@ function animate() {
 	requestAnimationFrame(animate);
 
 	if (panCamera) {
-		camera.position.lerp(cameraTarget, lerpRate);
-		orbitControls.target.lerp(orbitTarget, lerpRate);
+		//camera.position.lerp(starCOM_x + 20, starCOM_y + 20, starCOM_z + 20, lerpRate);
+		orbitControls.target.lerp(new THREE.Vector3(starCOM_x, starCOM_y, starCOM_z), lerpRate);
+		//camera.lookAt(new THREE.Vector3(starCOM_x, starCOM_y, starCOM_z));
 	}
 
 	// Update orbitControls
