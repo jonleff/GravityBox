@@ -103,7 +103,7 @@ const G = 1;
 let numParticles = 25000;
 
 // Controls spray brush width
-let phi = 1;
+let brushWidth = 1;
 
 // Controls ellipse curvature
 let e = 1;
@@ -228,11 +228,6 @@ function loadSystem() {
 
 	}
 
-
-
-
-
-	// Grab stars and clouds array from the code
 	starParams = [{
 			type: "star",
 			position: [0, 0, 0],
@@ -241,10 +236,6 @@ function loadSystem() {
 			radius: 1.5,
 			mass: 1,
 		}];
-
-
-
-
 
 	let k = 0;
 	for (const starParam of starParams) {
@@ -343,6 +334,7 @@ function loadSystem() {
 	}
 
 
+	// Add stars to scene
 	for (const star of stars) {
 
 		for (const particle of star.particles) {
@@ -357,15 +349,17 @@ function loadSystem() {
 			star.mesh.name = star.params.id
 
 		}
-
 		scene.add(star.mesh);
-		movables.push(star.mesh)
+		movables.push(star.mesh);
+
 
 		// Needed to update InstancedMesh object
 		star.mesh.instanceMatrix.needsUpdate = true;
 		star.mesh.instanceColor.needsUpdate = true;
 
 	}
+
+
 
 
 
@@ -495,18 +489,38 @@ function generate_particles(params) {
 }
 
 
-let yHat = new THREE.Vector3(0, 1, 0);
 
+let yHat_x = 0;
+let yHat_y = 1;
+let yHat_z = 0;
 
+let starCOM_x = 0;
+let starCOM_y = 0;
+let starCOM_z = 0;
+let starMassSum = 0;
+
+let starPosition;
+let massWeightedStarPosition;
 // need to fix up the star logic
 
 // Update the physics of each particle
 function move() {
 
+	starCOM_x = 0;
+	starCOM_y = 0;
+	starCOM_z = 0;
+	starMassSum = 0;
 
 	// Execute SHM for star particles
 	for (const star of stars) {
-		
+
+		starPosition = star.mesh.position.clone()
+
+		starCOM_x += star.mesh.position.x * star.params.mass
+		starCOM_y += star.mesh.position.y * star.params.mass
+		starCOM_z += star.mesh.position.z * star.params.mass
+		starMassSum += star.params.mass;
+
 		for (const particle of star.particles) {
 
 			ax = -particle.kx * (particle.xLocal - particle.x0);
@@ -532,6 +546,13 @@ function move() {
 
 	}
 
+	// Get COM vector for all stars combined
+	starCOM_x /= starMassSum;
+	starCOM_y /= starMassSum;
+	starCOM_z /= starMassSum;
+
+
+
 	// List to keep track of velocities for each particle
 	vs = [];
 
@@ -541,25 +562,36 @@ function move() {
 		// All particles are recyclable
 		if (painting && Math.random() < brushDensity) {
 
-			// Distance between injection point and origin
-           	let R = inter.distanceTo(origin);
-
            	// Normalized vector pointing from origin to injection point
            	// WHY CANT THIS BE NORMALIZED?????
-           	let rHat = inter.sub(origin);
+           	let rHat_x = inter.x - starCOM_x;
+           	let rHat_y = inter.y - starCOM_y;
+           	let rHat_z = inter.z - starCOM_z;
+
+			// Distance between injection point and origin
+           	let R = Math.sqrt((rHat_x * rHat_x) + (rHat_y * rHat_y) + (rHat_z * rHat_z));
 
            	// Normalized vector to store initial velocity direction
-			let v0Hat = new THREE.Vector3();
-			v0Hat.crossVectors(yHat, rHat).normalize();
+           	// v0Hat is cross product of yHat and rHat
+           	let v0Hat_x = (yHat_y * rHat_z) - (yHat_z * rHat_y);
+           	let v0Hat_y = (yHat_z * rHat_x) - (yHat_x * rHat_z);
+           	let v0Hat_z = (yHat_x * rHat_y) - (yHat_y * rHat_x);
+
+			// Normalize v0Hat
+			let v0HatMag = Math.sqrt((v0Hat_x * v0Hat_x) + (v0Hat_y * v0Hat_y) + (v0Hat_z * v0Hat_z));
+           	v0Hat_x /= v0HatMag;
+           	v0Hat_y /= v0HatMag;
+           	v0Hat_z /= v0HatMag;
+
 
             // Calculate the tangential velocity for circular orbit
             // Scale this velocity by user inputted eccentricity parameter
-            const vTangent = e * Math.sqrt(1 / R);
+            const vTan = e * Math.sqrt(1 / R);
 
             // Set the initial velocity with the magnitude of tangential velocity
-            particle.vx = v0Hat.x * vTangent;
-            particle.vy = 0
-            particle.vz = v0Hat.z * vTangent;
+            particle.vx = v0Hat_x * vTan;
+            particle.vy = v0Hat_y * vTan;
+            particle.vz = v0Hat_z * vTan;
 
             // Set the particle's position
             //particle.x = inter.x + (phi * Math.random())
@@ -572,9 +604,9 @@ function move() {
 			const theta = Math.acos(2 * Math.random() - 1); // Polar angle (0 to pi)
 
 			// Convert spherical coordinates to Cartesian coordinates
-			particle.x = inter.x + (2 * Math.sin(theta) * Math.cos(phi));
-			particle.y = inter.y + (2 * Math.sin(theta) * Math.sin(phi));
-			particle.z = inter.z + (2 * Math.cos(theta));
+			particle.x = inter.x + (brushWidth * Math.sin(theta) * Math.cos(phi));
+			particle.y = inter.y + (brushWidth * Math.sin(theta) * Math.sin(phi));
+			particle.z = inter.z + (brushWidth * Math.cos(theta));
 
             // Mark the particle as active
             particle.active = true;
