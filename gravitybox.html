@@ -105,6 +105,9 @@
         <label for="eccentricity" class="form-label" style="margin-top: 20px;">Orbital Eccentricity</label> (<span id="eccentricityValue">1.0</span>)
 		<input type="range" class="form-range" min="0.5" max="1.5" step="0.001" value="1" id="eccentricity">  
 
+		<button type="button" class="btn btn-danger" id="clearParticles">Clear Particles</button>
+
+
     </div>
 
     <!-- Menu toggle button -->
@@ -951,6 +954,8 @@ function animate() {
         let brushDensitySlider = document.getElementById("brushDensity");
         let eccentricitySlider = document.getElementById("eccentricity");
 
+        let clearParticlesButton = document.getElementById("clearParticles");
+
 
         let brushWidthValue = document.getElementById("brushWidthValue");
         let brushDensityValue = document.getElementById("brushDensityValue");
@@ -975,7 +980,18 @@ function animate() {
             eccentricityValue.innerHTML = value;        
         });
 
+        clearParticlesButton.addEventListener("click", () => {
+        	console.log("deactivating all particles")
+        	for (const particle of particles) {
+				particle.active = false;
+				matrix.setPosition(0, 0, 0);
+				mesh.setMatrixAt(particle.index, matrix);
+			}
 
+			// Needed to update InstancedMesh object
+			mesh.instanceMatrix.needsUpdate = true;
+			mesh.instanceColor.needsUpdate = true;
+        });
 
 
 
