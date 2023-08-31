@@ -99,9 +99,11 @@
         <label for="brushWidth" class="form-label">Brush Width</label> (<span id="brushWidthValue">0.5</span>)
 		<input type="range" class="form-range" min="0.2" max="5" step="0.001" value="0.5" id="brushWidth">
 
-        <label for="brushWidth" class="form-label" style="margin-top: 20px;">Brush Density</label> (<span id="brushDensityValue">0.01</span>)
+        <label for="brushDensity" class="form-label" style="margin-top: 20px;">Brush Density</label> (<span id="brushDensityValue">0.01</span>)
 		<input type="range" class="form-range" min="0.005" max="1" step="0.00001" value="0.01" id="brushDensity">
-          
+        
+        <label for="eccentricity" class="form-label" style="margin-top: 20px;">Orbital Eccentricity</label> (<span id="eccentricityValue">1.0</span>)
+		<input type="range" class="form-range" min="0.5" max="1.5" step="0.001" value="1" id="eccentricity">  
 
     </div>
 
@@ -189,7 +191,7 @@ let brushWidth = 0.5;
 let brushDensity = 0.01;
 
 // Controls ellipse curvature
-let e = 1;
+let eccentricity = 1;
 
 
 let cameraTarget = new THREE.Vector3(20, 20, 20);
@@ -655,7 +657,7 @@ function move() {
 
             // Calculate the tangential velocity for circular orbit
             // Scale this velocity by user inputted eccentricity parameter
-            let vTan = e * Math.sqrt(1 / rMag);
+            let vTan = eccentricity * Math.sqrt(1 / rMag);
 
             // Set the initial velocity with the magnitude of tangential velocity
             particle.v_x = v0Hat_x * vTan;
@@ -952,6 +954,7 @@ function animate() {
 
         let brushWidthValue = document.getElementById("brushWidthValue");
         let brushDensityValue = document.getElementById("brushDensityValue");
+        let eccentricityValue = document.getElementById("eccentricityValue");
 
 
         brushWidthSlider.addEventListener("input", () => {
@@ -967,7 +970,9 @@ function animate() {
         });
 
         eccentricitySlider.addEventListener("input", () => {
-            eccentricity = parseFloat(eccentricitySlider.value);
+            let value = parseFloat(eccentricitySlider.value);
+            eccentricity = value;
+            eccentricityValue.innerHTML = value;        
         });
 
 
