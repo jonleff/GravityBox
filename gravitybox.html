@@ -682,7 +682,7 @@ function move() {
 	for (const particle of particles) {
 
 		// All particles are recyclable
-		if (painting && Math.random() < brushDensity) {
+		if (painting && mouseDown && Math.random() < brushDensity) {
 
 			// Orbital injection logic
 
@@ -840,21 +840,8 @@ function onWindowResize() {
 
 
 
-// Event listeners
-window.addEventListener('keydown', (event) => {
-    if (event.key === 'p') {
-    	painting = true;
 
-    }
-});
 
-window.addEventListener('keyup', (event) => {
-
-	console.log(event.key);
-    if (event.key === 'p') {
-        painting = false;
-    }
-});
 
 
 
@@ -875,10 +862,38 @@ let raycaster = new THREE.Raycaster();
 let mouse = new THREE.Vector2(); // Store normalized mouse coordinates
 let inter = new THREE.Vector3();
 
+let mouseDown = false;
 
 // Attach mousemove and click event listeners to the window
 canvas.addEventListener("mousemove", trackMouse);
 canvas.addEventListener("click", trackMouse);
+canvas.addEventListener("touchstart", trackTouch);
+canvas.addEventListener("touchmove", trackTouch);
+
+
+addEventListener("mousedown", (event) => {
+	mouseDown = true;
+});
+
+addEventListener("touchstart", (event) => {
+	mouseDown = true;
+});
+
+addEventListener("touchmove", (event) => {
+	mouseDown = true;
+});
+
+addEventListener("touchend", (event) => {
+	mouseDown = false;
+});
+
+addEventListener("mouseup", (event) => {
+	mouseDown = false;
+});
+
+
+
+
 
 // Attach mousemove event listener to the window
 function trackMouse(event) {
@@ -900,6 +915,30 @@ function trackMouse(event) {
         // You can use the 'inter' for your logic here
     }
 }
+
+
+
+function trackTouch(event) {
+    // Get the first touch event from the event object
+    const touch = event.touches[0];
+
+    // Calculate touch position in normalized device coordinates (NDC)
+    const touchX = (touch.clientX / window.innerWidth) * 2 - 1;
+    const touchY = -(touch.clientY / window.innerHeight) * 2 + 1;
+
+    // Update the raycaster's origin and direction based on touch position
+    raycaster.setFromCamera(new THREE.Vector2(touchX, touchY), camera);
+
+    // Perform raycasting to find intersection with z-plane at z = 0
+    const intersects = raycaster.intersectObject(yPlaneObject);
+
+    // Check if there is an intersection
+    if (intersects.length > 0) {
+        inter = intersects[0].point;
+    }
+}
+
+
 
 // Inside your animate() function, you can use the 'mouse' object to perform raycasting.
 
@@ -990,9 +1029,11 @@ function animate() {
 
 }
 
-
-
-
+		/*
+		----------------------------------------------------
+		BELOW THIS POINT IS JAVASCRIPT THAT CONTROLS THE GUI
+		----------------------------------------------------
+		*/
 
         // JavaScript to toggle the menu
         let menu = document.getElementById("menu");
@@ -1067,16 +1108,18 @@ function animate() {
 
 
 
-
+		// Grab painting toggle button
 		let paintingButton = document.getElementById("paintingButton");
 
 		paintingButton.addEventListener("click", () => {
 			if (painting) {
 				painting = false;
+				orbitControls.enabled = true;
 				paintingButton.style.color = "";
 
 			} else {
 				painting = true;
+				orbitControls.enabled = false;
 				paintingButton.style.color = "blue";
 			}
 		});
