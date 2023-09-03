@@ -4,7 +4,7 @@
 		<title>Gravity Box</title>
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
-		
+
 
   		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" integrity="sha384-rbsA2VBKQhggwzxH7pPCaAqO46MgnOM80zW1RWuH61DGLwZJEdK2Kadq2F9CUG65" crossorigin="anonymous">
   		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" integrity="sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
@@ -17,6 +17,11 @@
 				font-family: sans-serif;
 				outline: none; /* Remove the default focus outline */
 
+			}
+
+			#canvas {
+				position: absolute;
+				z-index: 0;
 			}
 
 			a {
@@ -53,6 +58,7 @@
 	            color: #fff;
 	            transition: left 0.1s;
 	            overflow-y: auto;
+	            z-index: 1;
 	        }
 
 	        .menu.active {
@@ -153,7 +159,13 @@
         <label for="eccentricity" class="form-label" style="margin-top: 20px;">Orbital Eccentricity</label> (<span id="eccentricityValue">1.0</span>)
 		<input type="range" class="form-range" min="0.5" max="1.5" step="0.001" value="1" id="eccentricity">  
 
-		<button type="button" class="btn btn-danger" id="clearParticles">Clear Particles</button>
+		<label class="form-check-label" for="clockwiseToggle" style="margin-top: 20px;">Injection Direction</label>
+	    <div class="form-check form-switch" >
+	        <input type="checkbox" class="form-check-input" id="clockwiseToggle">
+	        <p id="clockwiseStatus">Counterclockwise</p>
+	    </div>
+
+		<button type="button" class="btn btn-danger" id="clearParticles" style="margin-top: 20px;">Clear Particles</button>
 
 
     </div>
@@ -217,6 +229,17 @@ let starCOM_y = 0;
 let starCOM_z = 0;
 let starMassSum = 0;
 
+
+let intersects;
+
+let cameraQuaternion;
+
+// stores if we are hovered over a button or not
+let overButton = false;
+
+
+// Controls if orbital injection is CCW or CW
+let clockwiseInjection = false
 
 let r_x, r_y, r_z;
 let phi, theta;
@@ -318,6 +341,13 @@ const bloomPass = new UnrealBloomPass( new THREE.Vector2( window.innerWidth, win
 
 
 
+
+
+
+
+
+
+
 let movables = [];
 
 
@@ -333,6 +363,37 @@ let mouseX, mouseY, screenPosition;
 loadSystem();
 
 
+
+// Create plane geometry and material
+const planeGeometry = new THREE.PlaneGeometry(200, 200); // You can adjust the size as needed
+const planeMaterial = new THREE.MeshBasicMaterial({
+	color: 0x00ff00, 
+	transparent: true, 
+	opacity: 0,
+	side: THREE.DoubleSide
+});
+
+// Create plane objects
+const yPlaneObject = new THREE.Mesh(planeGeometry, planeMaterial);
+const dynamicPlaneObject = new THREE.Mesh(planeGeometry, planeMaterial);
+
+// Rotate if necessary
+yPlaneObject.rotateX(Math.PI / 2); // Rotate the plane 90 degrees around the x-axis to make it a Y-plane
+
+// Set position at origin
+yPlaneObject.position.set(0, 0, 0);
+dynamicPlaneObject.position.set(0, 0, 0);
+
+// Add planes to scene
+scene.add(yPlaneObject);
+scene.add(dynamicPlaneObject);
+
+
+
+
+
+
+
 // Initialize drag controls
 const dragControls = new DragControls(movables, camera, renderer.domElement);
 
@@ -346,8 +407,13 @@ dragControls.addEventListener("hoveron", (event) => {
 
 
 
-dragControls.addEventListener( 'hoveron', function () { orbitControls.enabled = false; } );
-dragControls.addEventListener( 'hoveroff', function () { orbitControls.enabled = true; } );
+dragControls.addEventListener( "hoveron", function () { orbitControls.enabled = false; } );
+dragControls.addEventListener( "touchstart", function () { orbitControls.enabled = false; } );
+dragControls.addEventListener( "touchmove", function () { orbitControls.enabled = false; } );
+
+
+dragControls.addEventListener( "hoveroff", function () { orbitControls.enabled = true; } );
+dragControls.addEventListener( "touchend", function () { orbitControls.enabled = true; } );
 
 
 function loadSystem() {
@@ -361,6 +427,14 @@ function loadSystem() {
 		scene.add(grid);
 
 	}
+
+
+
+
+
+
+
+
 
 	starParams = [{
 			type: "star",
@@ -682,7 +756,7 @@ function move() {
 	for (const particle of particles) {
 
 		// All particles are recyclable
-		if (painting && mouseDown && Math.random() < brushDensity) {
+		if (painting && mouseDown && !overButton && Math.random() < brushDensity) {
 
 			// Orbital injection logic
 
@@ -706,6 +780,12 @@ function move() {
            	v0Hat_x /= v0HatMag;
            	v0Hat_y /= v0HatMag;
            	v0Hat_z /= v0HatMag;
+
+           	if (clockwiseInjection) {
+           		v0Hat_x *= -1;
+           		v0Hat_y *= -1;
+           		v0Hat_z *= -1;
+           	}
 
             // Calculate the tangential velocity for circular orbit
             // Scale this velocity by user inputted eccentricity parameter
@@ -845,17 +925,7 @@ function onWindowResize() {
 
 
 
-const yPlaneGeometry = new THREE.PlaneGeometry(200, 200); // You can adjust the size as needed
-const yPlaneMaterial = new THREE.MeshBasicMaterial({
-	color: 0x00ff00, 
-	transparent: true, 
-	opacity: 0,
-	side: THREE.DoubleSide
-});
-const yPlaneObject = new THREE.Mesh(yPlaneGeometry, yPlaneMaterial);
-yPlaneObject.rotateX(Math.PI / 2); // Rotate the plane 90 degrees around the x-axis to make it a Y-plane
-yPlaneObject.position.set(0, 0, 0); // Position the plane at z = 0
-scene.add(yPlaneObject);
+
 
 // Define raycaster
 let raycaster = new THREE.Raycaster();
@@ -894,26 +964,56 @@ addEventListener("mouseup", (event) => {
 
 
 
+function updateDynamicPlane() {
 
-// Attach mousemove event listener to the window
+	// Update dynamicPlaneObject to always be centered at the stellar COM
+	dynamicPlaneObject.position.x = starCOM_x;
+	dynamicPlaneObject.position.y = starCOM_y;
+	dynamicPlaneObject.position.z = starCOM_z;
+
+	// Update dynamicPlaneObject to always be perpendicular to vector emanating from camera
+	cameraQuaternion = new THREE.Quaternion();
+	camera.getWorldQuaternion(cameraQuaternion);
+	dynamicPlaneObject.setRotationFromQuaternion(cameraQuaternion);
+	dynamicPlaneObject.updateMatrixWorld();
+
+}
+
+// Function that seeks to track mouse location in 3D space 
 function trackMouse(event) {
     // Calculate mouse position in normalized device coordinates (NDC)
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
+
+
+
     // Update the raycaster's origin and direction based on the mouse position
     raycaster.setFromCamera(mouse, camera);
 
     // Perform raycasting to find inter with z-plane at z = 0
-    const intersects = raycaster.intersectObject(yPlaneObject); // Replace 'planeObject' with the object representing your z-plane
+    intersects = raycaster.intersectObject(yPlaneObject);
+
+    if (intersects.length > 0) {
+        
+        inter = intersects[0].point;
+
+        if (Math.sqrt((inter.x * inter.x) + (inter.y * inter.y) + (inter.z * inter.z)) < 50) {
+        	return
+        }
+
+    }
+
+    intersects = raycaster.intersectObject(dynamicPlaneObject);
 
     // Check if there is an inter
     if (intersects.length > 0) {
         inter = intersects[0].point;
-        console.log("inter Point:", inter);
-        
-        // You can use the 'inter' for your logic here
     }
+
+
+
+
 }
 
 
@@ -998,9 +1098,12 @@ function onClick() {
 }
 
 
+
 function animate() {
 
+	updateDynamicPlane();
 
+	//panCamera = true;
 	// Request new frame
 	requestAnimationFrame(animate);
 
@@ -1035,9 +1138,53 @@ function animate() {
 		----------------------------------------------------
 		*/
 
+
         // JavaScript to toggle the menu
         let menu = document.getElementById("menu");
         let menuToggle = document.getElementById("menuToggle");
+
+
+        let buttons = document.getElementById("buttons");
+
+
+
+        buttons.addEventListener("mouseenter", () => {
+        	overButton = true;
+        });
+
+        buttons.addEventListener("touchstart", () => {
+        	overButton = true;
+        });
+
+
+        buttons.addEventListener("mouseleave", () => {
+        	overButton = false;
+        });
+
+        buttons.addEventListener("touchend", () => {
+        	overButton = false;
+        });
+
+
+
+
+
+        menu.addEventListener("mouseenter", () => {
+        	overButton = true;
+        });
+
+        menu.addEventListener("touchstart", () => {
+        	overButton = true;
+        });
+
+
+        menu.addEventListener("mouseleave", () => {
+        	overButton = false;
+        });
+
+        menu.addEventListener("touchend", () => {
+        	overButton = false;
+        });
 
         menuToggle.addEventListener("click", () => {
             menu.classList.toggle("active");
@@ -1111,18 +1258,55 @@ function animate() {
 		// Grab painting toggle button
 		let paintingButton = document.getElementById("paintingButton");
 
+
+		function deactivatePainting() {
+			painting = false;
+			orbitControls.enabled = true;
+			paintingButton.style.color = "";
+		}
+
+		function activatePainting() {
+			painting = true;
+			orbitControls.enabled = false;
+			paintingButton.style.color = "blue";
+		}
+
 		paintingButton.addEventListener("click", () => {
 			if (painting) {
-				painting = false;
-				orbitControls.enabled = true;
-				paintingButton.style.color = "";
-
+				deactivatePainting();
 			} else {
-				painting = true;
-				orbitControls.enabled = false;
-				paintingButton.style.color = "blue";
+				activatePainting();
 			}
 		});
+
+
+		document.addEventListener("keydown", (event) => {
+			if (event.key == " ") {
+				activatePainting();
+			}
+		});
+
+		document.addEventListener("keyup", (event) => {
+			if (event.key == " ") {
+				deactivatePainting();
+			}
+		});
+
+
+
+        let clockwiseToggle = document.getElementById("clockwiseToggle");
+        let clockwiseStatus = document.getElementById("clockwiseStatus");
+
+        clockwiseToggle.addEventListener("change", () => {
+        	if (clockwiseToggle.checked) {
+        		clockwiseInjection = true;
+        		clockwiseStatus.innerHTML = "Clockwise"
+        		console.log("clockwise!");
+        	} else {
+        		clockwiseInjection = false;
+				clockwiseStatus.innerHTML = "Counterclockwise"
+        	}
+        });
 
 
 
