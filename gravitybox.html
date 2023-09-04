@@ -15,7 +15,7 @@
 				background-color: #ccc;
 				color: #000;
 				font-family: sans-serif;
-
+				user-select: none;
 			}
 
 			#canvas {
@@ -68,12 +68,12 @@
 
 
 	        /* Style for the menu toggle button */
-	        #menuToggle {
+	        #showMenuButton {
 	            position: fixed;
 	            top: 10px;
 	            left: 10px;
 	            z-index: 2; /* Ensure it's above the canvas */
-	            background-color: #333;
+	            background-color: #4d4d4d;
 	            color: #fff;
 	            border: none;
 	            padding: 7px 12px;
@@ -83,8 +83,8 @@
 
 	        }
 
-	        #menuToggle:hover {
-	        	background-color: #e7e7e7;
+	        #showMenuButton:hover {
+	        	background-color: #333;
 	        }
 
 
@@ -113,6 +113,27 @@
 
 	        #playIcon {
 	        	display: none;
+	        }
+
+	        #hideMenuButton {
+	        	background-color: transparent;
+	        	border: none;
+	        	margin: 0px;
+	        	padding: 0px;
+	        	font-size: 1.4em;
+	        	width: 30px;
+	        	height: 30px;
+	        	position: absolute;
+	        	top: 5px;
+	        	right: 5px;
+	        	border-radius: 7px;
+	        	display: flex;
+	        	align-items: center;
+	        	justify-content: center;
+	        }
+
+	        #hideMenuButton:hover {
+	        	background-color: #bfbfbf;
 	        }
 
 
@@ -152,9 +173,12 @@
 
     <!-- Sidebar menu -->
     <div class="menu" id="menu">
+        
+        <button id="hideMenuButton"><i class="fa-solid fa-xmark"></i></button>
+
         <h2>Parameters</h2>
 
-        <label for="brushWidth" class="form-label">Brush Width</label> (<span id="brushWidthValue">0.5</span>)
+        <label for="brushWidth" class="form-label" style="margin-top: 10px;">Brush Width</label> (<span id="brushWidthValue">0.5</span>)
 		<input type="range" class="form-range" min="0.2" max="5" step="0.001" value="0.5" id="brushWidth">
 
         <label for="brushDensity" class="form-label" style="margin-top: 20px;">Brush Density</label> (<span id="brushDensityValue">0.01</span>)
@@ -176,7 +200,7 @@
     </div>
 
     <!-- Menu toggle button -->
-    <button id="menuToggle">Options</button>
+    <button id="showMenuButton">Options</button>
 
 
 	<canvas id="canvas"></canvas>
@@ -406,23 +430,7 @@ scene.add(dynamicPlaneObject);
 
 
 
-/*
 
-// Initialize drag controls
-const dragControls = new DragControls(movables, camera, renderer.domElement);
-
-
-
-
-dragControls.addEventListener( "hoveron", function () { orbitControls.enabled = false; } );
-dragControls.addEventListener( "touchstart", function () { orbitControls.enabled = false; } );
-dragControls.addEventListener( "touchmove", function () { orbitControls.enabled = false; } );
-
-
-dragControls.addEventListener( "hoveroff", function () { orbitControls.enabled = true; } );
-dragControls.addEventListener( "touchend", function () { orbitControls.enabled = true; } );
-
-*/
 function loadSystem() {
 
 	starParams = [{
@@ -571,41 +579,6 @@ function loadSystem() {
 
 
 
-
-// Add event listeners
-window.addEventListener("pointerdown", () => {
-	panCamera = false;
-});
-
-window.addEventListener("resize", () => {
-	camera.aspect = window.innerWidth / window.innerHeight;
-	camera.updateProjectionMatrix();
-	renderer.setSize( window.innerWidth, window.innerHeight );
-});
-
-window.addEventListener("keydown", () => {
-	if (event.keyCode == 71) {
-		play = !play;
-	} else if (event.keyCode == 81) {
-		let gridObject = scene.getObjectByName("grid");
-		let gridVisibility = gridObject.visible;
-		gridObject.visible = !gridVisibility;
-	} else if (event.keyCode == 67) {
-		panCamera = true;
-	}
-});
-
-window.addEventListener("keydown", (event) => {
-	if (event.key == " ") {
-		activatePainting();
-	}
-});
-
-window.addEventListener("keyup", (event) => {
-	if (event.key == " ") {
-		deactivatePainting();
-	}
-});
 
 
 // Start the animation
@@ -958,36 +931,7 @@ let mouseDown = false;
 
 
 
-// Attach mousemove and click event listeners to the window
-canvas.addEventListener("mousemove", trackMouse);
-canvas.addEventListener("click", trackMouse);
-canvas.addEventListener("touchstart", trackTouch);
-canvas.addEventListener("touchmove", trackTouch);
 
-
-
-
-document.addEventListener("mousedown", (event) => {
-	mouseDown = true;
-});
-
-canvas.addEventListener("touchstart", (event) => {
-	mouseDown = true;
-});
-
-canvas.addEventListener("touchmove", (event) => {
-	mouseDown = true;
-});
-
-canvas.addEventListener("touchend", (event) => {
-	mouseDown = false;
-
-
-});
-
-canvas.addEventListener("mouseup", (event) => {
-	mouseDown = false;
-});
 
 
 
@@ -1189,70 +1133,110 @@ function animate() {
 		*/
 
 
+
+		// Attach mousemove and click event listeners to the window
+		canvas.addEventListener("mousemove", trackMouse);
+		canvas.addEventListener("click", trackMouse);
+		canvas.addEventListener("touchstart", trackTouch);
+		canvas.addEventListener("touchmove", trackTouch);
+		canvas.addEventListener("mousedown", (event) => { mouseDown = true; });
+		canvas.addEventListener("touchstart", (event) => { mouseDown = true; });
+		canvas.addEventListener("touchmove", (event) => { mouseDown = true; });
+		canvas.addEventListener("touchend", (event) => { mouseDown = false; });
+		canvas.addEventListener("mouseup", (event) => { mouseDown = false; });
+
         // JavaScript to toggle the menu
         let menu = document.getElementById("menu");
-        let menuToggle = document.getElementById("menuToggle");
-
-
+        let showMenuButton = document.getElementById("showMenuButton");
         let buttons = document.getElementById("buttons");
 
-
-
-        buttons.addEventListener("mouseenter", () => {
-        	overButton = true;
+        buttons.addEventListener("mouseenter", () => { overButton = true; });
+        buttons.addEventListener("touchstart", () => { overButton = true; });
+        buttons.addEventListener("mouseleave", () => { overButton = false; });
+        buttons.addEventListener("touchend", () => { overButton = false; });
+        menu.addEventListener("mouseenter", () => { overButton = true; });
+        menu.addEventListener("touchstart", () => { overButton = true; });
+        menu.addEventListener("mouseleave", () => { overButton = false; });
+        menu.addEventListener("touchend", () => { overButton = false; });
+        showMenuButton.addEventListener("mouseenter", () => { overButton = true; });
+        showMenuButton.addEventListener("touchstart", () => { overButton = true; });
+        showMenuButton.addEventListener("mouseleave", () => { overButton = false; });
+        showMenuButton.addEventListener("touchend", () => { overButton = false; });
+        showMenuButton.addEventListener("click", () => { 
+        	menu.classList.toggle("active");
+        	showMenuButton.style.display = "none"; 
         });
 
-        buttons.addEventListener("touchstart", () => {
-        	overButton = true;
-        });
-
-
-        buttons.addEventListener("mouseleave", () => {
-        	overButton = false;
-        });
-
-        buttons.addEventListener("touchend", () => {
-        	overButton = false;
-        });
-
-
-
-
-
-        menu.addEventListener("mouseenter", () => {
-        	overButton = true;
-        });
-
-        menu.addEventListener("touchstart", () => {
-        	overButton = true;
+        hideMenuButton.addEventListener("click", () => { 
+        	menu.classList.toggle("active");
+        	showMenuButton.style.display = "block"; 
         });
 
 
-        menu.addEventListener("mouseleave", () => {
-        	overButton = false;
-        });
 
-        menu.addEventListener("touchend", () => {
-        	overButton = false;
-        });
+		// Add event listeners
+		window.addEventListener("pointerdown", () => { panCamera = false; });
+		window.addEventListener("resize", () => {
+			camera.aspect = window.innerWidth / window.innerHeight;
+			camera.updateProjectionMatrix();
+			renderer.setSize( window.innerWidth, window.innerHeight );
+		});
+
+		window.addEventListener("keydown", () => {
+			if (event.keyCode == 71) {
+				play = !play;
+			} else if (event.keyCode == 81) {
+				let gridObject = scene.getObjectByName("grid");
+				let gridVisibility = gridObject.visible;
+				gridObject.visible = !gridVisibility;
+			} else if (event.keyCode == 67) {
+				panCamera = true;
+
+			// Stop all particles
+			} else if (event.key == "t") {
+	        	for (const particle of particles) {
+					particle.v_x = 0;
+					particle.v_y = 0;
+					particle.v_z = 0;
+
+				}
+
+			// Reverse all particles
+			} else if (event.key == "r") {
+	        	for (const particle of particles) {
+					particle.v_x *= -1;
+					particle.v_y *= -1;
+					particle.v_z *= -1;
+
+				}
+			}
+		});
+
+		window.addEventListener("keydown", (event) => {
+			if (event.key == " ") {
+				activatePainting();
+			}
+		});
+
+		window.addEventListener("keyup", (event) => {
+			if (event.key == " ") {
+				deactivatePainting();
+			}
+		});	
 
 
-        menuToggle.addEventListener("click", () => {
-            menu.classList.toggle("active");
-        });
+
+
 
         // JavaScript to get slider values
         let brushWidthSlider = document.getElementById("brushWidth");
         let brushDensitySlider = document.getElementById("brushDensity");
         let eccentricitySlider = document.getElementById("eccentricity");
-
         let clearParticlesButton = document.getElementById("clearParticles");
-
 
         let brushWidthValue = document.getElementById("brushWidthValue");
         let brushDensityValue = document.getElementById("brushDensityValue");
         let eccentricityValue = document.getElementById("eccentricityValue");
-
 
         brushWidthSlider.addEventListener("input", () => {
             let value = parseFloat(brushWidthSlider.value);
@@ -1284,7 +1268,6 @@ function animate() {
 			mesh.instanceMatrix.needsUpdate = true;
 			mesh.instanceColor.needsUpdate = true;
         });
-
 
 
 		// Play/Pause button
