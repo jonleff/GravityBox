@@ -15,7 +15,6 @@
 				background-color: #ccc;
 				color: #000;
 				font-family: sans-serif;
-				outline: none; /* Remove the default focus outline */
 
 			}
 
@@ -77,13 +76,18 @@
 	            background-color: #333;
 	            color: #fff;
 	            border: none;
-	            padding: 10px;
+	            padding: 7px 12px;
 	            cursor: pointer;
+	            border-radius: 7px;
+	            transition: background-color 0.01s ease;
+
 	        }
 
-	        .form-label {
-	        	display: inline-block;
+	        #menuToggle:hover {
+	        	background-color: #e7e7e7;
 	        }
+
+
 
 	        #buttons {
 	        	position: fixed;
@@ -159,10 +163,11 @@
         <label for="eccentricity" class="form-label" style="margin-top: 20px;">Orbital Eccentricity</label> (<span id="eccentricityValue">1.0</span>)
 		<input type="range" class="form-range" min="0.5" max="1.5" step="0.001" value="1" id="eccentricity">  
 
-		<label class="form-check-label" for="clockwiseToggle" style="margin-top: 20px;">Injection Direction</label>
 	    <div class="form-check form-switch" >
-	        <input type="checkbox" class="form-check-input" id="clockwiseToggle">
-	        <p id="clockwiseStatus">Counterclockwise</p>
+
+			<label class="form-check-label" for="clockwiseToggle" style="margin-top: 20px;">Reverse Injection Direction</label>
+			<input type="checkbox" class="form-check-input" id="clockwiseToggle">
+
 	    </div>
 
 		<button type="button" class="btn btn-danger" id="clearParticles" style="margin-top: 20px;">Clear Particles</button>
@@ -171,12 +176,7 @@
     </div>
 
     <!-- Menu toggle button -->
-    <button id="menuToggle">Toggle Menu</button>
-
-
-
-
-
+    <button id="menuToggle">Options</button>
 
 
 	<canvas id="canvas"></canvas>
@@ -186,7 +186,7 @@
 // Import modules
 import * as THREE from 'https://unpkg.com/three@0.120.1/build/three.module.js';
 	import {OrbitControls} from 'https://threejsfundamentals.org/threejs/resources/threejs/r122/examples/jsm/controls/OrbitControls.js';
-	import {DragControls} from 'https://threejsfundamentals.org/threejs/resources/threejs/r122/examples/jsm/controls/DragControls.js';
+	//import {DragControls} from 'https://threejsfundamentals.org/threejs/resources/threejs/r122/examples/jsm/controls/DragControls.js';
 	import {EffectComposer} from 'https://threejsfundamentals.org/threejs/resources/threejs/r122/examples/jsm/postprocessing/EffectComposer.js';
 	import {RenderPass} from 'https://threejsfundamentals.org/threejs/resources/threejs/r122/examples/jsm/postprocessing/RenderPass.js';
 	import {UnrealBloomPass} from 'https://threejsfundamentals.org/threejs/resources/threejs/r122/examples/jsm/postprocessing/UnrealBloomPass.js';
@@ -223,7 +223,6 @@ let v_x, v_y, v_z, l, w, h, x, y, z, a_x, a_y, a_z;
 let yHat_x = 0;
 let yHat_y = 1;
 let yHat_z = 0;
-
 let starCOM_x = 0;
 let starCOM_y = 0;
 let starCOM_z = 0;
@@ -231,19 +230,16 @@ let starMassSum = 0;
 
 
 let intersects;
-
 let cameraQuaternion;
 
 // stores if we are hovered over a button or not
 let overButton = false;
-
 
 // Controls if orbital injection is CCW or CW
 let clockwiseInjection = false
 
 let r_x, r_y, r_z;
 let phi, theta;
-
 let starPosition;
 let massWeightedStarPosition;
 
@@ -257,7 +253,7 @@ let j = 0;
 // Gravitational constant (fine-tuned for the environment)
 const G = 1;
 
-let numParticles = 25000;
+let numParticles = 50000;
 
 // Controls spray brush width
 let brushWidth = 0.5;
@@ -274,8 +270,6 @@ let orbitTarget = new THREE.Vector3(0, 0, 0);
 let lerpRate = 0.075;
 let panCamera = false;
 
-
-let parent;
 let vs = [];
 let vMean = 0;
 let colorIndex = 0;
@@ -316,7 +310,7 @@ orbitControls = new OrbitControls( camera, renderer.domElement );
 //orbitControls.dampingFactor = 0.4;
 //orbitControls.screenSpacePanning = false;
 orbitControls.minDistance = 0;
-orbitControls.maxDistance = 200;
+orbitControls.maxDistance = 150;
 orbitControls.maxPolarAngle = (2/3) * (Math.PI) + 0.3;
 
 // Grid
@@ -358,9 +352,29 @@ let origin = new THREE.Vector3(0, 0, 0)
 
 let starParams, stars, clouds, particles, starParticles, objs, mesh, instancedCount;
 
-let mouseX, mouseY, screenPosition;
 
+
+/*
+PARAMETERS TO CONTROL STAR DRAGGING
+
+(Operating principle: nothing subject to physical laws can be dragged)
+*/
+
+let overStar = false;
+
+
+
+
+
+// Instantiate the scene
 loadSystem();
+
+
+
+
+
+
+
 
 
 
@@ -392,18 +406,11 @@ scene.add(dynamicPlaneObject);
 
 
 
-
+/*
 
 // Initialize drag controls
 const dragControls = new DragControls(movables, camera, renderer.domElement);
 
-// need to update stars when we move them
-
-/*
-dragControls.addEventListener("hoveron", (event) => {
-	alert(event.object.name);
-});
-*/
 
 
 
@@ -415,26 +422,8 @@ dragControls.addEventListener( "touchmove", function () { orbitControls.enabled 
 dragControls.addEventListener( "hoveroff", function () { orbitControls.enabled = true; } );
 dragControls.addEventListener( "touchend", function () { orbitControls.enabled = true; } );
 
-
+*/
 function loadSystem() {
-
-	// need to fix
-	// this is failing if nothing is in scene
-	if (scene.children.length > 0) {
-		while(scene.children.length > 0) { 
-			scene.remove(scene.children[0]);
-		}
-		scene.add(grid);
-
-	}
-
-
-
-
-
-
-
-
 
 	starParams = [{
 			type: "star",
@@ -571,6 +560,8 @@ function loadSystem() {
 
 
 
+	// Once everything is loaded, set physics in motion
+	play = true;
 
 
 
@@ -582,11 +573,39 @@ function loadSystem() {
 
 
 // Add event listeners
-window.addEventListener("pointerdown", onClick);
+window.addEventListener("pointerdown", () => {
+	panCamera = false;
+});
 
-window.addEventListener("resize", onWindowResize);
-window.addEventListener("keydown", onKeyPress);
+window.addEventListener("resize", () => {
+	camera.aspect = window.innerWidth / window.innerHeight;
+	camera.updateProjectionMatrix();
+	renderer.setSize( window.innerWidth, window.innerHeight );
+});
 
+window.addEventListener("keydown", () => {
+	if (event.keyCode == 71) {
+		play = !play;
+	} else if (event.keyCode == 81) {
+		let gridObject = scene.getObjectByName("grid");
+		let gridVisibility = gridObject.visible;
+		gridObject.visible = !gridVisibility;
+	} else if (event.keyCode == 67) {
+		panCamera = true;
+	}
+});
+
+window.addEventListener("keydown", (event) => {
+	if (event.key == " ") {
+		activatePainting();
+	}
+});
+
+window.addEventListener("keyup", (event) => {
+	if (event.key == " ") {
+		deactivatePainting();
+	}
+});
 
 
 // Start the animation
@@ -712,6 +731,14 @@ function move() {
 	// Execute SHM for star particles
 	for (const star of stars) {
 
+
+		if (overStar && mouseDown && !overButton) {
+			star.mesh.position.x = planeIntersection.x;
+			star.mesh.position.y = planeIntersection.y;
+			star.mesh.position.z = planeIntersection.z;
+		}
+
+
 		starPosition = star.mesh.position.clone()
 
 		starCOM_x += star.mesh.position.x * star.params.mass
@@ -762,9 +789,9 @@ function move() {
 
            	// Vector pointing from stellar COM to injection point
            	// WHY CANT THIS BE NORMALIZED?????
-           	r_x = inter.x - starCOM_x;
-           	r_y = inter.y - starCOM_y;
-           	r_z = inter.z - starCOM_z;
+           	r_x = planeIntersection.x - starCOM_x;
+           	r_y = planeIntersection.y - starCOM_y;
+           	r_z = planeIntersection.z - starCOM_z;
 
 			// Distance between stellar COM and injection point
            	let rMag = Math.sqrt((r_x * r_x) + (r_y * r_y) + (r_z * r_z));
@@ -796,14 +823,14 @@ function move() {
             particle.v_y = v0Hat_y * vTan;
             particle.v_z = v0Hat_z * vTan;
 
-			// Generate random spherical coordinates
+			// Generate random spherical coordinates (on surface of sphere)
 			phi = Math.random() * Math.PI * 2; // azimuthal angle (0 to 2*Pi)
 			theta = Math.acos(2 * Math.random() - 1); // polar angle (0 to Pi)
 
 			// Convert spherical coordinates to Cartesian coordinates
-			particle.x = inter.x + (brushWidth * Math.sin(theta) * Math.cos(phi));
-			particle.y = inter.y + (brushWidth * Math.sin(theta) * Math.sin(phi));
-			particle.z = inter.z + (brushWidth * Math.cos(theta));
+			particle.x = planeIntersection.x + (brushWidth * Math.sin(theta) * Math.cos(phi));
+			particle.y = planeIntersection.y + (brushWidth * Math.sin(theta) * Math.sin(phi));
+			particle.z = planeIntersection.z + (brushWidth * Math.cos(theta));
 
             // Mark the particle as active
             particle.active = true;
@@ -908,14 +935,6 @@ function move() {
 
 
 
-function onWindowResize() {
-	camera.aspect = window.innerWidth / window.innerHeight;
-	camera.updateProjectionMatrix();
-	renderer.setSize( window.innerWidth, window.innerHeight );
-}
-
-
-
 // Painting code
 
 
@@ -930,9 +949,14 @@ function onWindowResize() {
 // Define raycaster
 let raycaster = new THREE.Raycaster();
 let mouse = new THREE.Vector2(); // Store normalized mouse coordinates
-let inter = new THREE.Vector3();
+let planeIntersection = new THREE.Vector3();
+let planeObject;
+
 
 let mouseDown = false;
+
+
+
 
 // Attach mousemove and click event listeners to the window
 canvas.addEventListener("mousemove", trackMouse);
@@ -941,23 +965,27 @@ canvas.addEventListener("touchstart", trackTouch);
 canvas.addEventListener("touchmove", trackTouch);
 
 
-addEventListener("mousedown", (event) => {
+
+
+document.addEventListener("mousedown", (event) => {
 	mouseDown = true;
 });
 
-addEventListener("touchstart", (event) => {
+canvas.addEventListener("touchstart", (event) => {
 	mouseDown = true;
 });
 
-addEventListener("touchmove", (event) => {
+canvas.addEventListener("touchmove", (event) => {
 	mouseDown = true;
 });
 
-addEventListener("touchend", (event) => {
+canvas.addEventListener("touchend", (event) => {
 	mouseDown = false;
+
+
 });
 
-addEventListener("mouseup", (event) => {
+canvas.addEventListener("mouseup", (event) => {
 	mouseDown = false;
 });
 
@@ -971,47 +999,79 @@ function updateDynamicPlane() {
 	dynamicPlaneObject.position.y = starCOM_y;
 	dynamicPlaneObject.position.z = starCOM_z;
 
+	yPlaneObject.position.x = starCOM_x;
+	yPlaneObject.position.y = starCOM_y;
+	yPlaneObject.position.z = starCOM_z;
+
+	// THIS CODE SHOULD BE A LOT MORE EFFICIENT AND SENSIBLE
+
+	
 	// Update dynamicPlaneObject to always be perpendicular to vector emanating from camera
 	cameraQuaternion = new THREE.Quaternion();
 	camera.getWorldQuaternion(cameraQuaternion);
 	dynamicPlaneObject.setRotationFromQuaternion(cameraQuaternion);
 	dynamicPlaneObject.updateMatrixWorld();
 
+
 }
 
+//orbitControls.enabled = false;
+
 // Function that seeks to track mouse location in 3D space 
+
+// CHANGE THIS FUNCTION NAME TO BE MORE GENERAL: TRACKINPUT
 function trackMouse(event) {
+
     // Calculate mouse position in normalized device coordinates (NDC)
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
-
-
-
     // Update the raycaster's origin and direction based on the mouse position
     raycaster.setFromCamera(mouse, camera);
 
-    // Perform raycasting to find inter with z-plane at z = 0
-    intersects = raycaster.intersectObject(yPlaneObject);
+    // Logic for moving star
+    intersects = raycaster.intersectObject(stars[0].mesh);
 
     if (intersects.length > 0) {
-        
-        inter = intersects[0].point;
-
-        if (Math.sqrt((inter.x * inter.x) + (inter.y * inter.y) + (inter.z * inter.z)) < 50) {
-        	return
-        }
-
-    }
-
-    intersects = raycaster.intersectObject(dynamicPlaneObject);
-
-    // Check if there is an inter
-    if (intersects.length > 0) {
-        inter = intersects[0].point;
+		orbitControls.enabled = false;
+		overStar = true;
+    } else {
+    	if (!painting) {
+			orbitControls.enabled = true;
+    	}
     }
 
 
+	// Get the camera's direction vector
+	const cameraDirection = new THREE.Vector3();
+	camera.getWorldDirection(cameraDirection);
+
+	// Create a vector pointing along the Y-axis
+	const yAxis = new THREE.Vector3(0, 1, 0);
+
+	// Calculate the angle between the camera direction and Y-axis
+	const angle = cameraDirection.angleTo(yAxis);
+
+	// Convert the angle from radians to degrees
+	const angleDegrees = THREE.MathUtils.radToDeg(angle);
+
+    console.log("rotation", angleDegrees);
+
+	if (angleDegrees < 120) {
+		planeObject = dynamicPlaneObject;
+	} else {
+		planeObject = yPlaneObject;
+	}
+
+	// Find intersection against y-plane
+    intersects = raycaster.intersectObject(planeObject);
+
+    if (intersects.length > 0) {
+        planeIntersection = intersects[0].point;
+
+        // Accept this intersection point if sufficiently close to XXXXX star???
+        //if (Math.sqrt((yPlaneIntersection.x * yPlaneIntersection.x) + (yPlaneIntersection.y * yPlaneIntersection.y) + (yPlaneIntersection.z * yPlaneIntersection.z)) < 50) { return }
+    }
 
 
 }
@@ -1019,6 +1079,7 @@ function trackMouse(event) {
 
 
 function trackTouch(event) {
+
     // Get the first touch event from the event object
     const touch = event.touches[0];
 
@@ -1026,37 +1087,45 @@ function trackTouch(event) {
     const touchX = (touch.clientX / window.innerWidth) * 2 - 1;
     const touchY = -(touch.clientY / window.innerHeight) * 2 + 1;
 
-    // Update the raycaster's origin and direction based on touch position
+    // Update the raycaster's origin and direction based on the mouse position
     raycaster.setFromCamera(new THREE.Vector2(touchX, touchY), camera);
 
-    // Perform raycasting to find intersection with z-plane at z = 0
-    const intersects = raycaster.intersectObject(yPlaneObject);
 
-    // Check if there is an intersection
+    // Logic for moving star
+    intersects = raycaster.intersectObject(stars[0].mesh);
+
+    if (intersects.length > 0) {
+		orbitControls.enabled = false;
+		overStar = true;
+    } else {
+    	if (!painting) {
+			orbitControls.enabled = true;
+    	}
+    }
+
+
+	// Find intersection against y-plane
+    intersects = raycaster.intersectObject(yPlaneObject);
+
+    if (intersects.length > 0) {
+        inter = intersects[0].point;
+
+        // Accept this intersection point if sufficiently close to XXXXX star???
+        if (Math.sqrt((planeIntersection.x * planeIntersection.x) + (planeIntersection.y * planeIntersection.y) + (planeIntersection.z * planeIntersection.z)) < 50) { return }
+    }
+
+	// Find intersection against dynamic plane
+    intersects = raycaster.intersectObject(dynamicPlaneObject);
+
     if (intersects.length > 0) {
         inter = intersects[0].point;
     }
+
+
 }
 
 
 
-// Inside your animate() function, you can use the 'mouse' object to perform raycasting.
-
-
-
-// Set the mouse position when the mouse moves
-canvas.addEventListener("mousemove", (event) => {
-    // Get the mouse's position in screen space
-    mouseX = event.clientX;
-    mouseY = event.clientY;
-
-    // Calculate mouse position in normalized device coordinates (NDC)
-    screenPosition = new THREE.Vector2();
-    screenPosition.x = (mouseX / window.innerWidth) * 2 - 1;
-    screenPosition.y = -(mouseY / window.innerHeight) * 2 + 1;
-
-    //console.log("moving mouse!", screenPosition.x, screenPosition.y)
-});
 
 
 
@@ -1072,30 +1141,9 @@ canvas.addEventListener("mousemove", (event) => {
 
 
 
-function onKeyPress(event) {
 
-	if (event.keyCode == 71) {
-		play = !play;
-	} else if (event.keyCode == 81) {
-		let gridObject = scene.getObjectByName("grid");
-		let gridVisibility = gridObject.visible;
-		gridObject.visible = !gridVisibility;
-	} else if (event.keyCode == 27) {
-		
-		if (codeEditor.style.visibility === "visible") {
-			codeEditor.style.visibility = "hidden"
-		} else {
-			codeEditor.style.visibility = "visible"
-			play = false;
-		}
-	} else if (event.keyCode == 67) {
-		panCamera = true;
-	}
-	}
 
-function onClick() {
-	panCamera = false;
-}
+
 
 
 
@@ -1131,6 +1179,8 @@ function animate() {
 
 
 }
+
+
 
 		/*
 		----------------------------------------------------
@@ -1185,6 +1235,7 @@ function animate() {
         menu.addEventListener("touchend", () => {
         	overButton = false;
         });
+
 
         menuToggle.addEventListener("click", () => {
             menu.classList.toggle("active");
@@ -1269,7 +1320,25 @@ function animate() {
 			painting = true;
 			orbitControls.enabled = false;
 			paintingButton.style.color = "blue";
+
+			// Needed
+			overStar = false;
 		}
+
+
+		function activateDragging() {
+			console.log("activating dragging")
+			overStar = true;
+			orbitControls.enabled = false;
+		}
+
+		function deactivateDragging() {
+
+			console.log("deactivating dragging")
+			overStar = false;
+			orbitControls.enabled = true;
+		}
+
 
 		paintingButton.addEventListener("click", () => {
 			if (painting) {
@@ -1280,17 +1349,7 @@ function animate() {
 		});
 
 
-		document.addEventListener("keydown", (event) => {
-			if (event.key == " ") {
-				activatePainting();
-			}
-		});
 
-		document.addEventListener("keyup", (event) => {
-			if (event.key == " ") {
-				deactivatePainting();
-			}
-		});
 
 
 
