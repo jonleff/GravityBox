@@ -994,7 +994,6 @@ function trackMouse(event) {
     	}
     }
 
-
 	// Get the camera's direction vector
 	const cameraDirection = new THREE.Vector3();
 	camera.getWorldDirection(cameraDirection);
@@ -1008,8 +1007,6 @@ function trackMouse(event) {
 	// Convert the angle from radians to degrees
 	const angleDegrees = THREE.MathUtils.radToDeg(angle);
 
-    console.log("rotation", angleDegrees);
-
 	if (angleDegrees < 120) {
 		planeObject = dynamicPlaneObject;
 	} else {
@@ -1021,9 +1018,6 @@ function trackMouse(event) {
 
     if (intersects.length > 0) {
         planeIntersection = intersects[0].point;
-
-        // Accept this intersection point if sufficiently close to XXXXX star???
-        //if (Math.sqrt((yPlaneIntersection.x * yPlaneIntersection.x) + (yPlaneIntersection.y * yPlaneIntersection.y) + (yPlaneIntersection.z * yPlaneIntersection.z)) < 50) { return }
     }
 
 
@@ -1266,7 +1260,6 @@ function animate() {
         });
 
         clearParticlesButton.addEventListener("click", () => {
-        	console.log("deactivating all particles")
         	for (const particle of particles) {
 				particle.active = false;
 				matrix.setPosition(0, 0, 0);
@@ -1319,14 +1312,11 @@ function animate() {
 
 
 		function activateDragging() {
-			console.log("activating dragging")
 			overStar = true;
 			orbitControls.enabled = false;
 		}
 
 		function deactivateDragging() {
-
-			console.log("deactivating dragging")
 			overStar = false;
 			orbitControls.enabled = true;
 		}
@@ -1346,16 +1336,12 @@ function animate() {
 
 
         let clockwiseToggle = document.getElementById("clockwiseToggle");
-        let clockwiseStatus = document.getElementById("clockwiseStatus");
 
         clockwiseToggle.addEventListener("change", () => {
         	if (clockwiseToggle.checked) {
         		clockwiseInjection = true;
-        		clockwiseStatus.innerHTML = "Clockwise"
-        		console.log("clockwise!");
         	} else {
         		clockwiseInjection = false;
-				clockwiseStatus.innerHTML = "Counterclockwise"
         	}
         });
 
