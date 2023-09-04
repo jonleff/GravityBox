@@ -240,16 +240,28 @@ const colors = [0x00FF00, 0x01FF00, 0x02FF00, 0x03FF00, 0x04FF00, 0x05FF00, 0x06
 let starColors = [0xFDB813, 0xfdb91c, 0xfcb103, 0xfdc135, 0xe3a002];
 
 	// Instantiate variables
-let camera, orbitControls, scene, renderer, dx, dy, dz, r, d, force;
-let v_x, v_y, v_z, l, w, h, x, y, z, a_x, a_y, a_z;
+let camera, orbitControls, scene, renderer, dx, dy, dz, r, d;
 
+let l, w, h, x, y, z;
 
+// Stores gravitational force
+let force;
+
+// Components of velocity and acceleration vectors used throughout
+let v_x, v_y, v_z;
+let a_x, a_y, a_z;
+
+// Components of unit vector pointing in y-direction (directly upwards)
 let yHat_x = 0;
 let yHat_y = 1;
 let yHat_z = 0;
+
+// Components of stellar Center of Mass (COM)
 let starCOM_x = 0;
 let starCOM_y = 0;
 let starCOM_z = 0;
+
+// Sum of stellar mass
 let starMassSum = 0;
 
 
@@ -330,14 +342,11 @@ camera.position.set( 20, 20, 20 );
 
 // Instantiate orbit orbitControls and set parameters
 orbitControls = new OrbitControls( camera, renderer.domElement );
-//orbitControls.enableDamping = true;
-//orbitControls.dampingFactor = 0.4;
-//orbitControls.screenSpacePanning = false;
 orbitControls.minDistance = 0;
 orbitControls.maxDistance = 150;
-orbitControls.maxPolarAngle = (2/3) * (Math.PI) + 0.3;
+orbitControls.maxPolarAngle = (2/3) * (Math.PI) + 0.4;
 
-// Grid
+// Add grid to scene
 let grid = new THREE.GridHelper(100, 30);
 grid.name = "grid";
 scene.add(grid);
