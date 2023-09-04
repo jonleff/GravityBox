@@ -29,21 +29,6 @@
 
 
 
-			button {
-				border-radius: 5px;
-				border: solid white 3px;
-				background-color: #00004d;
-				color: white;
-				font-weight: bold;
-				font-size: 18px;
-				padding: 5px 10px 5px 10px;
-				margin-top: 10px;
-			}
-
-
-
-
-
 
 	        /* Define the styles for the sidebar menu */
 	        .menu {
@@ -70,24 +55,10 @@
 	        /* Style for the menu toggle button */
 	        #showMenuButton {
 	            position: fixed;
-	            top: 10px;
+	            top: 1px;
 	            left: 10px;
 	            z-index: 2; /* Ensure it's above the canvas */
-	            background-color: #4d4d4d;
-	            color: #fff;
-	            border: none;
-	            padding: 7px 12px;
-	            cursor: pointer;
-	            border-radius: 7px;
-	            transition: background-color 0.01s ease;
-
 	        }
-
-	        #showMenuButton:hover {
-	        	background-color: #333;
-	        }
-
-
 
 	        #buttons {
 	        	position: fixed;
@@ -187,6 +158,9 @@
         <label for="eccentricity" class="form-label" style="margin-top: 20px;">Orbital Eccentricity</label> (<span id="eccentricityValue">1.0</span>)
 		<input type="range" class="form-range" min="0.5" max="1.5" step="0.001" value="1" id="eccentricity">  
 
+        <label for="gravitationalConstant" class="form-label" style="margin-top: 20px;">Gravitational Const.</label> (<span id="gravitationalConstantValue">1.0</span>)
+		<input type="range" class="form-range" min="0" max="10" step="0.001" value="1" id="gravitationalConstant">  
+
 	    <div class="form-check form-switch" >
 
 			<label class="form-check-label" for="clockwiseToggle" style="margin-top: 20px;">Reverse Injection Direction</label>
@@ -195,12 +169,13 @@
 	    </div>
 
 		<button type="button" class="btn btn-danger" id="clearParticles" style="margin-top: 20px;">Clear Particles</button>
-
+		<button type="button" class="btn btn-secondary" id="reverseVelocities" style="margin-top: 10px;">Reverse Velocities</button>
+		<button type="button" class="btn btn-secondary" id="zeroOutVelocities" style="margin-top: 10px;">Zero Out Velocities</button>
 
     </div>
 
     <!-- Menu toggle button -->
-    <button id="showMenuButton">Options</button>
+	<button type="button" class="btn btn-secondary" id="showMenuButton" style="margin-top: 10px;">Options</button>
 
 
 	<canvas id="canvas"></canvas>
@@ -287,7 +262,7 @@ let painting = false;
 let j = 0;
 
 // Gravitational constant (fine-tuned for the environment)
-const G = 1;
+let G = 1;
 
 let numParticles = 50000;
 
@@ -701,6 +676,22 @@ function generate_particles(params) {
 
 
 
+function moveOutsideTime() {
+
+	for (const star of stars) {
+
+		if (overStar && mouseDown && !overButton) {
+			star.mesh.position.x = planeIntersection.x;
+			star.mesh.position.y = planeIntersection.y;
+			star.mesh.position.z = planeIntersection.z;
+		}
+
+	}
+
+
+}
+
+
 
 // Update the physics of each particle
 function move() {
@@ -712,14 +703,6 @@ function move() {
 
 	// Execute SHM for star particles
 	for (const star of stars) {
-
-
-		if (overStar && mouseDown && !overButton) {
-			star.mesh.position.x = planeIntersection.x;
-			star.mesh.position.y = planeIntersection.y;
-			star.mesh.position.z = planeIntersection.z;
-		}
-
 
 		starPosition = star.mesh.position.clone()
 
@@ -798,7 +781,7 @@ function move() {
 
             // Calculate the tangential velocity for circular orbit
             // Scale this velocity by user inputted eccentricity parameter
-            let vTan = eccentricity * Math.sqrt(1 / rMag);
+            let vTan = eccentricity * Math.sqrt(G / rMag);
 
             // Set the initial velocity with the magnitude of tangential velocity
             particle.v_x = v0Hat_x * vTan;
@@ -971,106 +954,63 @@ function updateDynamicPlane() {
 //orbitControls.enabled = false;
 
 // Function that seeks to track mouse location in 3D space 
+function trackInput(event) {
+    
+    let clientX, clientY, touches;
 
-// CHANGE THIS FUNCTION NAME TO BE MORE GENERAL: TRACKINPUT
-function trackMouse(event) {
+    if (event.type === "mousemove") {
+        clientX = event.clientX;
+        clientY = event.clientY;
+    } else if (event.type === "touchmove" || event.type == "touchstart") {
+        clientX = event.touches[0].clientX;
+        clientY = event.touches[0].clientY;
+    }
 
-    // Calculate mouse position in normalized device coordinates (NDC)
-    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    // Calculate input position in normalized device coordinates (NDC)
+    mouse.x = (clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(clientY / window.innerHeight) * 2 + 1;
 
-    // Update the raycaster's origin and direction based on the mouse position
+    // Update the raycaster's origin and direction based on the input position
     raycaster.setFromCamera(mouse, camera);
 
     // Logic for moving star
     intersects = raycaster.intersectObject(stars[0].mesh);
 
     if (intersects.length > 0) {
-		orbitControls.enabled = false;
-		overStar = true;
+        orbitControls.enabled = false;
+        overStar = true;
     } else {
-    	if (!painting) {
-			orbitControls.enabled = true;
-    	}
+        if (!painting) {
+            orbitControls.enabled = true;
+        }
     }
 
-	// Get the camera's direction vector
-	const cameraDirection = new THREE.Vector3();
-	camera.getWorldDirection(cameraDirection);
+    // Get the camera's direction vector
+    const cameraDirection = new THREE.Vector3();
+    camera.getWorldDirection(cameraDirection);
 
-	// Create a vector pointing along the Y-axis
-	const yAxis = new THREE.Vector3(0, 1, 0);
+    // Create a vector pointing along the Y-axis
+    const yAxis = new THREE.Vector3(0, 1, 0);
 
-	// Calculate the angle between the camera direction and Y-axis
-	const angle = cameraDirection.angleTo(yAxis);
+    // Calculate the angle between the camera direction and Y-axis
+    const angle = cameraDirection.angleTo(yAxis);
 
-	// Convert the angle from radians to degrees
-	const angleDegrees = THREE.MathUtils.radToDeg(angle);
+    // Convert the angle from radians to degrees
+    const angleDegrees = THREE.MathUtils.radToDeg(angle);
 
-	if (angleDegrees < 120) {
-		planeObject = dynamicPlaneObject;
-	} else {
-		planeObject = yPlaneObject;
-	}
+    if (angleDegrees < 120) {
+        planeObject = dynamicPlaneObject;
+    } else {
+        planeObject = yPlaneObject;
+    }
 
-	// Find intersection against y-plane
+    // Find intersection against y-plane
     intersects = raycaster.intersectObject(planeObject);
 
     if (intersects.length > 0) {
         planeIntersection = intersects[0].point;
     }
-
-
 }
-
-
-
-function trackTouch(event) {
-
-    // Get the first touch event from the event object
-    const touch = event.touches[0];
-
-    // Calculate touch position in normalized device coordinates (NDC)
-    const touchX = (touch.clientX / window.innerWidth) * 2 - 1;
-    const touchY = -(touch.clientY / window.innerHeight) * 2 + 1;
-
-    // Update the raycaster's origin and direction based on the mouse position
-    raycaster.setFromCamera(new THREE.Vector2(touchX, touchY), camera);
-
-
-    // Logic for moving star
-    intersects = raycaster.intersectObject(stars[0].mesh);
-
-    if (intersects.length > 0) {
-		orbitControls.enabled = false;
-		overStar = true;
-    } else {
-    	if (!painting) {
-			orbitControls.enabled = true;
-    	}
-    }
-
-
-	// Find intersection against y-plane
-    intersects = raycaster.intersectObject(yPlaneObject);
-
-    if (intersects.length > 0) {
-        inter = intersects[0].point;
-
-        // Accept this intersection point if sufficiently close to XXXXX star???
-        if (Math.sqrt((planeIntersection.x * planeIntersection.x) + (planeIntersection.y * planeIntersection.y) + (planeIntersection.z * planeIntersection.z)) < 50) { return }
-    }
-
-	// Find intersection against dynamic plane
-    intersects = raycaster.intersectObject(dynamicPlaneObject);
-
-    if (intersects.length > 0) {
-        inter = intersects[0].point;
-    }
-
-
-}
-
 
 
 
@@ -1115,6 +1055,8 @@ function animate() {
 	// renderer.render( scene, camera );
 	composer.render();
 
+	moveOutsideTime();
+
 
 	// Skip the move() function if paused
 	if (!play) {
@@ -1138,10 +1080,10 @@ function animate() {
 
 
 		// Attach mousemove and click event listeners to the window
-		canvas.addEventListener("mousemove", trackMouse);
-		canvas.addEventListener("click", trackMouse);
-		canvas.addEventListener("touchstart", trackTouch);
-		canvas.addEventListener("touchmove", trackTouch);
+		canvas.addEventListener("mousemove", trackInput);
+		canvas.addEventListener("click", trackInput);
+		canvas.addEventListener("touchstart", trackInput);
+		canvas.addEventListener("touchmove", trackInput);
 		canvas.addEventListener("mousedown", (event) => { mouseDown = true; });
 		canvas.addEventListener("touchstart", (event) => { mouseDown = true; });
 		canvas.addEventListener("touchmove", (event) => { mouseDown = true; });
@@ -1192,26 +1134,8 @@ function animate() {
 				let gridObject = scene.getObjectByName("grid");
 				let gridVisibility = gridObject.visible;
 				gridObject.visible = !gridVisibility;
-			} else if (event.keyCode == 67) {
+			} else if (event.key == "c") {
 				panCamera = true;
-
-			// Stop all particles
-			} else if (event.key == "t") {
-	        	for (const particle of particles) {
-					particle.v_x = 0;
-					particle.v_y = 0;
-					particle.v_z = 0;
-
-				}
-
-			// Reverse all particles
-			} else if (event.key == "r") {
-	        	for (const particle of particles) {
-					particle.v_x *= -1;
-					particle.v_y *= -1;
-					particle.v_z *= -1;
-
-				}
 			}
 		});
 
@@ -1231,33 +1155,49 @@ function animate() {
 
 
 
-        // JavaScript to get slider values
+        // JavaScript to get slider objects
         let brushWidthSlider = document.getElementById("brushWidth");
         let brushDensitySlider = document.getElementById("brushDensity");
         let eccentricitySlider = document.getElementById("eccentricity");
+        let gravitationalConstantSlider = document.getElementById("gravitationalConstant");
+
         let clearParticlesButton = document.getElementById("clearParticles");
+        let reverseVelocitiesButton = document.getElementById("reverseVelocities");
+        let zeroOutVelocitiesButton = document.getElementById("zeroOutVelocities");
+
 
         let brushWidthValue = document.getElementById("brushWidthValue");
         let brushDensityValue = document.getElementById("brushDensityValue");
         let eccentricityValue = document.getElementById("eccentricityValue");
+        let gravitationalConstantValue = document.getElementById("gravitationalConstantValue");
 
-        brushWidthSlider.addEventListener("input", () => {
-            let value = parseFloat(brushWidthSlider.value);
-            brushWidth = value;
-            brushWidthValue.innerHTML = value;
-        });
 
-        brushDensitySlider.addEventListener("input", () => {
-            let value = parseFloat(brushDensitySlider.value);
-            brushDensity = value;
-            brushDensityValue.innerHTML = value;        
-        });
+		brushWidthSlider.addEventListener("input", () => {
+		    let value = parseFloat(brushWidthSlider.value);
+		    brushWidth = value;
+		    brushWidthValue.innerHTML = value.toFixed(2);
+		});
 
-        eccentricitySlider.addEventListener("input", () => {
-            let value = parseFloat(eccentricitySlider.value);
-            eccentricity = value;
-            eccentricityValue.innerHTML = value;        
-        });
+		brushDensitySlider.addEventListener("input", () => {
+		    let value = parseFloat(brushDensitySlider.value);
+		    brushDensity = value;
+		    brushDensityValue.innerHTML = value.toFixed(2);
+		});
+
+		eccentricitySlider.addEventListener("input", () => {
+		    let value = parseFloat(eccentricitySlider.value);
+		    eccentricity = value;
+		    eccentricityValue.innerHTML = value.toFixed(2);
+		});
+
+		gravitationalConstantSlider.addEventListener("input", () => {
+		    let value = parseFloat(gravitationalConstantSlider.value);
+		    G = value;
+		    gravitationalConstantValue.innerHTML = value.toFixed(2);
+		});
+
+
+
 
         clearParticlesButton.addEventListener("click", () => {
         	for (const particle of particles) {
@@ -1271,6 +1211,22 @@ function animate() {
 			mesh.instanceColor.needsUpdate = true;
         });
 
+        reverseVelocitiesButton.addEventListener("click", () => {
+			for (const particle of particles) {
+				particle.v_x *= -1;
+				particle.v_y *= -1;
+				particle.v_z *= -1;
+
+			}
+        });
+
+        zeroOutVelocitiesButton.addEventListener("click", () => {
+        	for (const particle of particles) {
+				particle.v_x = 0;
+				particle.v_y = 0;
+				particle.v_z = 0;
+			}
+        });
 
 		// Play/Pause button
 		let playPauseButton = document.getElementById("playPauseButton");
