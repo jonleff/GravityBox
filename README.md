@@ -11,3 +11,13 @@ Changing around the brush radius and density makes for some incredible gravitati
 
 # Eccentricity
 This number determines the speed at which particles are injected into orbit.
+
+
+### Other notes
+
+#### Fixed Path vs Orbits
+
+If multiple stars, the stars are fixed and they follow a predetermined opath
+If one star and zero or more planets, the singular star is movable
+
+So we can add planets at will.
