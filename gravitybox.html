@@ -18,6 +18,11 @@
 				user-select: none;
 			}
 
+			canvas:focus {
+				outline: none;
+			}
+
+
 			#canvas {
 				position: absolute;
 				z-index: 0;
@@ -232,11 +237,30 @@ let starCOM_z = 0;
 let starMassSum = 0;
 
 
+
+// Define raycaster
+let raycaster = new THREE.Raycaster();
+let mouse = new THREE.Vector2(); // Store normalized mouse coordinates
+let planeIntersection = new THREE.Vector3();
+let planeObject;
+
+
+// INPUT VARIABLES
+let mouseDown = false;
+let spaceBarDown = false;
+let intersectingStar = false;
+let overStar = false;
+let intersectingButton = false; // stores if we are hovered over a button or not
+
+
+// Higher order states
+let play = false;
+let painting = false;
+let dragging = false;
+
 let intersects;
 let cameraQuaternion;
 
-// stores if we are hovered over a button or not
-let overButton = false;
 
 // Controls if orbital injection is CCW or CW
 let clockwiseInjection = false
@@ -246,9 +270,7 @@ let phi, theta;
 let starPosition;
 let massWeightedStarPosition;
 
-// Load the page without the physics iterating through time
-let play = false;
-let painting = false;
+
 
 // particle index tracker for instanced mesh
 let j = 0;
@@ -288,6 +310,7 @@ const color = new THREE.Color();
 scene = new THREE.Scene();
 scene.background = new THREE.Color( "black" );
 
+let tag = document.getElementById("showMenuButton");
 
 let canvas = document.getElementById("canvas");
 canvas.width = window.innerWidth;
@@ -309,6 +332,8 @@ orbitControls = new OrbitControls( camera, renderer.domElement );
 orbitControls.minDistance = 0;
 orbitControls.maxDistance = 150;
 orbitControls.maxPolarAngle = (2/3) * (Math.PI) + 0.4;
+
+orbitControls.enabled = false;
 
 // Add grid to scene
 let grid = new THREE.GridHelper(100, 30);
@@ -357,7 +382,6 @@ PARAMETERS TO CONTROL STAR DRAGGING
 (Operating principle: nothing subject to physical laws can be dragged)
 */
 
-let overStar = false;
 
 
 
@@ -669,7 +693,7 @@ function moveOutsideTime() {
 
 	for (const star of stars) {
 
-		if (overStar && mouseDown && !overButton) {
+		if (dragging) {
 			star.mesh.position.x = planeIntersection.x;
 			star.mesh.position.y = planeIntersection.y;
 			star.mesh.position.z = planeIntersection.z;
@@ -737,7 +761,7 @@ function move() {
 	for (const particle of particles) {
 
 		// All particles are recyclable
-		if (painting && mouseDown && !overButton && Math.random() < brushDensity) {
+		if (painting && Math.random() < brushDensity) {
 
 			// Orbital injection logic
 
@@ -900,15 +924,6 @@ function move() {
 
 
 
-// Define raycaster
-let raycaster = new THREE.Raycaster();
-let mouse = new THREE.Vector2(); // Store normalized mouse coordinates
-let planeIntersection = new THREE.Vector3();
-let planeObject;
-
-
-let mouseDown = false;
-
 
 
 
@@ -965,13 +980,11 @@ function trackInput(event) {
     // Logic for moving star
     intersects = raycaster.intersectObject(stars[0].mesh);
 
+    // this area here is an absolute mess
+    // need to figure this out before we can proceed
+
     if (intersects.length > 0) {
-        orbitControls.enabled = false;
-        overStar = true;
-    } else {
-        if (!painting) {
-            orbitControls.enabled = true;
-        }
+    	intersectingStar = true;
     }
 
     // Get the camera's direction vector
@@ -992,10 +1005,6 @@ function trackInput(event) {
     } else {
         planeObject = yPlaneObject;
     }
-
-    let tag = document.getElementById("showMenuButton");
-
-    tag.innerHTML = "overStar = " + overStar + ", mouseDown = " + mouseDown + ", orbitcontrols.enabled = " + orbitControls.enabled + ", painting = " + painting;
 
 
     // Find intersection against y-plane
@@ -1029,6 +1038,39 @@ function trackInput(event) {
 
 
 function animate() {
+
+	// IMPORTANT
+	// it seems that the master input handler needs to be here
+	// trackinput()
+
+	// Switch statement here for all possible states (rather than sequential logic)
+
+
+    //tag.innerHTML = "overStar = " + overStar + ", mouseDown = " + mouseDown + ", orbitcontrols.enabled = " + orbitControls.enabled + ", painting = " + painting;
+
+	tag.innerHTML = mouseDown + ", " + spaceBarDown + ", " + intersectingButton + ", " + orbitControls.enabled;
+
+	// this might not be very performant
+
+	//orbitControls.enabled = false;
+
+	// Painting mode
+	if (mouseDown && spaceBarDown && !intersectingButton) {
+		orbitControls.enabled = false;
+		dragging = false;
+		painting = true;
+	} else if (mouseDown && intersectingStar && !intersectingButton) {
+		orbitControls.enabled = false;
+		dragging = true;
+		painting = false;
+	} else {
+		orbitControls.enabled = false;
+		dragging = false;
+		painting = false;
+
+		// Required here; this is true until broken by another event
+		intersectingStar = false;
+	}
 
 	updateDynamicPlane();
 
@@ -1097,18 +1139,18 @@ function animate() {
         let showMenuButton = document.getElementById("showMenuButton");
         let buttons = document.getElementById("buttons");
 
-        buttons.addEventListener("mouseenter", () => { overButton = true; });
-        buttons.addEventListener("touchstart", () => { overButton = true; });
-        buttons.addEventListener("mouseleave", () => { overButton = false; });
-        buttons.addEventListener("touchend", () => { overButton = false; });
-        menu.addEventListener("mouseenter", () => { overButton = true; });
-        menu.addEventListener("touchstart", () => { overButton = true; });
-        menu.addEventListener("mouseleave", () => { overButton = false; });
-        menu.addEventListener("touchend", () => { overButton = false; });
-        showMenuButton.addEventListener("mouseenter", () => { overButton = true; });
-        showMenuButton.addEventListener("touchstart", () => { overButton = true; });
-        showMenuButton.addEventListener("mouseleave", () => { overButton = false; });
-        showMenuButton.addEventListener("touchend", () => { overButton = false; });
+        buttons.addEventListener("mouseenter", () => { intersectingButton = true; });
+        buttons.addEventListener("touchstart", () => { intersectingButton = true; });
+        buttons.addEventListener("mouseleave", () => { intersectingButton = false; });
+        buttons.addEventListener("touchend", () => { intersectingButton = false; });
+        menu.addEventListener("mouseenter", () => { intersectingButton = true; });
+        menu.addEventListener("touchstart", () => { intersectingButton = true; });
+        menu.addEventListener("mouseleave", () => { intersectingButton = false; });
+        menu.addEventListener("touchend", () => { intersectingButton = false; });
+        showMenuButton.addEventListener("mouseenter", () => { intersectingButton = true; });
+        showMenuButton.addEventListener("touchstart", () => { intersectingButton = true; });
+        showMenuButton.addEventListener("mouseleave", () => { intersectingButton = false; });
+        showMenuButton.addEventListener("touchend", () => { intersectingButton = false; });
         showMenuButton.addEventListener("click", () => { 
         	menu.classList.toggle("active");
         	showMenuButton.style.display = "none"; 
@@ -1143,13 +1185,15 @@ function animate() {
 
 		window.addEventListener("keydown", (event) => {
 			if (event.key == " ") {
-				activatePainting();
+				spaceBarDown = true;
+				//activatePainting();
 			}
 		});
 
 		window.addEventListener("keyup", (event) => {
 			if (event.key == " ") {
-				deactivatePainting();
+				spaceBarDown = false;
+				//deactivatePainting();
 			}
 		});	
 
@@ -1255,7 +1299,7 @@ function animate() {
 
 		function deactivatePainting() {
 			painting = false;
-			orbitControls.enabled = true;
+			//orbitControls.enabled = true;
 			paintingButton.style.color = "";
 		}
 
@@ -1269,17 +1313,10 @@ function animate() {
 		}
 
 
-		function activateDragging() {
-			overStar = true;
-			orbitControls.enabled = false;
-		}
-
-		function deactivateDragging() {
-			overStar = false;
-			orbitControls.enabled = true;
-		}
 
 
+
+		/*
 		paintingButton.addEventListener("click", () => {
 			if (painting) {
 				deactivatePainting();
@@ -1287,6 +1324,7 @@ function animate() {
 				activatePainting();
 			}
 		});
+		*/
 
 
 
