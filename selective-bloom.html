@@ -176,7 +176,7 @@ scene.add(new THREE.AmbientLight(0xffffff, 1));
 const spheregeo = new THREE.SphereGeometry( 0.5, 32, 32 );
 const meshBasic = new THREE.MeshBasicMaterial();
 const mesh = new THREE.Mesh(spheregeo, meshBasic);
-mesh.position.x = 4;
+mesh.position.x = 10;
 
 scene.add(mesh);
 //scene.add(new THREE.GridHelper(10, 8, 0x646464, 0x646464));
@@ -213,9 +213,12 @@ window.addEventListener("resize", () => {
 renderer.setAnimationLoop(() => {
   box.material = darkMaterial;
   scene.background.set(0x000000);
+
   bloomComposer.render();
+
   box.material = lightMaterial;
   scene.background.set(0x000000);
+  
   finalComposer.render();
   
 

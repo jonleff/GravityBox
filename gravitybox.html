@@ -667,6 +667,8 @@ function generate_particles(params) {
 
 function moveOutsideTime() {
 
+
+
 	for (const star of stars) {
 
 		if (overStar && mouseDown && !overButton) {
@@ -684,6 +686,8 @@ function moveOutsideTime() {
 
 // Update the physics of each particle
 function move() {
+
+
 
 	starCOM_x = 0;
 	starCOM_y = 0;
@@ -969,8 +973,9 @@ function trackInput(event) {
         orbitControls.enabled = false;
         overStar = true;
     } else {
-        if (!painting) {
+        if (!mouseDown) {
             orbitControls.enabled = true;
+            overStar = false;
         }
     }
 
@@ -999,6 +1004,14 @@ function trackInput(event) {
     if (intersects.length > 0) {
         planeIntersection = intersects[0].point;
     }
+
+
+    let tag = document.getElementById("showMenuButton");
+
+    tag.innerHTML = overStar + ", " + mouseDown + ", " + overButton;
+
+
+
 }
 
 
@@ -1024,6 +1037,8 @@ function trackInput(event) {
 
 
 function animate() {
+
+
 
 	updateDynamicPlane();
 
@@ -1269,10 +1284,12 @@ function animate() {
 			orbitControls.enabled = false;
 		}
 
+		/*
 		function deactivateDragging() {
 			overStar = false;
 			orbitControls.enabled = true;
 		}
+		*/
 
 
 		paintingButton.addEventListener("click", () => {
