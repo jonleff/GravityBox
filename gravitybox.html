@@ -969,6 +969,7 @@ function trackInput(event) {
     // Logic for moving star
     intersects = raycaster.intersectObject(stars[0].mesh);
 
+
     if (intersects.length > 0) {
         orbitControls.enabled = false;
         overStar = true;
@@ -1008,7 +1009,7 @@ function trackInput(event) {
 
     let tag = document.getElementById("showMenuButton");
 
-    tag.innerHTML = overStar + ", " + mouseDown + ", " + overButton;
+    tag.innerHTML = "overStar = " + overStar + ", mouseDown = " + mouseDown + ", orbitcontrols.enabled = " + orbitControls.enabled + ", painting = " + painting;
 
 
 
@@ -1046,6 +1047,7 @@ function animate() {
 	// Request new frame
 	requestAnimationFrame(animate);
 
+	/*
 	if (panCamera) {
 	    // Update the camera's target position using linear interpolation
 	    orbitControls.target.lerp(new THREE.Vector3(starCOM_x, starCOM_y, starCOM_z), lerpRate);
@@ -1059,6 +1061,7 @@ function animate() {
 	    // Update the camera's lookAt
 	    camera.lookAt(newLookAtPosition);
 	}
+	*/
 
 	// Update orbitControls
 	//orbitControls.update();
