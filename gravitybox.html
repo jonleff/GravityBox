@@ -333,8 +333,6 @@ orbitControls.minDistance = 0;
 orbitControls.maxDistance = 150;
 orbitControls.maxPolarAngle = (2/3) * (Math.PI) + 0.4;
 
-orbitControls.enabled = false;
-
 // Add grid to scene
 let grid = new THREE.GridHelper(100, 30);
 grid.name = "grid";
@@ -364,7 +362,6 @@ const bloomPass = new UnrealBloomPass( new THREE.Vector2( window.innerWidth, win
 
 
 
-let movables = [];
 
 
 
@@ -553,7 +550,6 @@ function loadSystem() {
 		}
 
 		scene.add(star.mesh);
-		movables.push(star.mesh);
 
 
 		// Needed to update InstancedMesh object
@@ -1309,34 +1305,15 @@ function animate() {
 		let paintingButton = document.getElementById("paintingButton");
 
 
-		function deactivatePainting() {
-			painting = false;
-			//orbitControls.enabled = true;
-			paintingButton.style.color = "";
-		}
-
-		function activatePainting() {
-			painting = true;
-			orbitControls.enabled = false;
-			paintingButton.style.color = "blue";
-
-			// Needed
-			overStar = false;
-		}
-
-
-
-
-
-		/*
 		paintingButton.addEventListener("click", () => {
-			if (painting) {
-				deactivatePainting();
+			if (spaceBarDown) {
+				spaceBarDown = false;
+				paintingButton.style.color = "";
 			} else {
-				activatePainting();
+				spaceBarDown = true;
+				paintingButton.style.color = "blue";
 			}
 		});
-		*/
 
 
 
