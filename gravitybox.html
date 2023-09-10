@@ -161,16 +161,19 @@
 		<input type="range" class="form-range" min="0.005" max="0.2" step="0.00001" value="0.01" id="brushDensity">
         
         <label for="eccentricity" class="form-label" style="margin-top: 20px;">Orbital Eccentricity</label> (<span id="eccentricityValue">1.0</span>)
-		<input type="range" class="form-range" min="0.5" max="1.5" step="0.001" value="1" id="eccentricity">  
+		<input type="range" class="form-range" min="0.25" max="1.5" step="0.001" value="1" id="eccentricity">  
 
         <label for="gravitationalConstant" class="form-label" style="margin-top: 20px;">Gravitational Const.</label> (<span id="gravitationalConstantValue">1.0</span>)
 		<input type="range" class="form-range" min="0" max="10" step="0.001" value="1" id="gravitationalConstant">  
 
 	    <div class="form-check form-switch" >
-
 			<label class="form-check-label" for="clockwiseToggle" style="margin-top: 20px;">Reverse Injection Direction</label>
 			<input type="checkbox" class="form-check-input" id="clockwiseToggle">
+	    </div>
 
+	    <div class="form-check form-switch" >
+			<label class="form-check-label" for="toggleGrid" style="margin-top: 20px;">Toggle Grid</label>
+			<input type="checkbox" class="form-check-input" id="toggleGrid" checked>
 	    </div>
 
 		<button type="button" class="btn btn-danger" id="clearParticles" style="margin-top: 20px;">Clear Particles</button>
@@ -223,10 +226,11 @@ let force;
 let v_x, v_y, v_z;
 let a_x, a_y, a_z;
 
-// Components of unit vector pointing in y-direction (directly upwards)
-let yHat_x = 0;
-let yHat_y = 1;
-let yHat_z = 0;
+// Components of unit vector pointing either normal to the y-plane (directly upwards) or normal to the dynamicPlane
+let u_x = 0;
+let u_y = 1;
+let u_z = 0;
+
 
 // Components of stellar Center of Mass (COM)
 let starCOM_x = 0;
@@ -771,10 +775,10 @@ function move() {
            	let rMag = Math.sqrt((r_x * r_x) + (r_y * r_y) + (r_z * r_z));
 
            	// Normalized vector to store initial velocity direction
-           	// v0Hat is cross product of yHat and r
-           	let v0Hat_x = (yHat_y * r_z) - (yHat_z * r_y);
-           	let v0Hat_y = (yHat_z * r_x) - (yHat_x * r_z);
-           	let v0Hat_z = (yHat_x * r_y) - (yHat_y * r_x);
+           	// v0Hat is cross product of u and r
+           	let v0Hat_x = (u_y * r_z) - (u_z * r_y);
+           	let v0Hat_y = (u_z * r_x) - (u_x * r_z);
+           	let v0Hat_z = (u_x * r_y) - (u_y * r_x);
 
 			// Normalize v0Hat
 			let v0HatMag = Math.sqrt((v0Hat_x * v0Hat_x) + (v0Hat_y * v0Hat_y) + (v0Hat_z * v0Hat_z));
@@ -905,29 +909,6 @@ function move() {
 
 
 
-
-
-
-
-// Painting code
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 function updateDynamicPlane() {
 
 	// Update dynamicPlaneObject to always be centered at the stellar COM
@@ -953,7 +934,7 @@ function updateDynamicPlane() {
 
 //orbitControls.enabled = false;
 
-// Function that seeks to track mouse location in 3D space 
+// Function that seeks to track mouse location in 3D space
 function trackInput(event) {
     
     let clientX, clientY, touches;
@@ -998,8 +979,25 @@ function trackInput(event) {
 
     if (angleDegrees < 120) {
         planeObject = dynamicPlaneObject;
+
+		// Get the normalized direction vector of dynamicPlaneObject
+		const directionVector = new THREE.Vector3();
+		dynamicPlaneObject.getWorldDirection(directionVector);
+
+        // Assign unit vector to orthonormal vector of dynamic plane
+		u_x = directionVector.x;
+		u_y = directionVector.y;
+		u_z = directionVector.z;
+
+
     } else {
         planeObject = yPlaneObject;
+
+        // Assign unit vector to orthonormal vector of y-plane
+        u_x = 0;
+        u_y = 1;
+        u_z = 0;
+
     }
 
 
@@ -1009,6 +1007,9 @@ function trackInput(event) {
     if (intersects.length > 0) {
         planeIntersection = intersects[0].point;
     }
+
+    event.preventDefault();
+
 }
 
 
@@ -1035,20 +1036,9 @@ function trackInput(event) {
 
 function animate() {
 
-	// IMPORTANT
-	// it seems that the master input handler needs to be here
-	// trackinput()
+	//tag.innerHTML = mouseDown + ", " + spaceBarDown + ", " + intersectingButton + ", " + orbitControls.enabled;
 
-	// Switch statement here for all possible states (rather than sequential logic)
-
-
-    //tag.innerHTML = "overStar = " + overStar + ", mouseDown = " + mouseDown + ", orbitcontrols.enabled = " + orbitControls.enabled + ", painting = " + painting;
-
-	tag.innerHTML = mouseDown + ", " + spaceBarDown + ", " + intersectingButton + ", " + orbitControls.enabled;
-
-	// this might not be very performant
-
-
+	// Navigation logic
 	if (spaceBarDown || intersectingStar) {
 		
 		orbitControls.enabled = false;
@@ -1059,17 +1049,14 @@ function animate() {
 
 		// Painting mode
 		if (mouseDown && spaceBarDown && !intersectingButton) {
-			//orbitControls.enabled = false;
 			dragging = false;
 			painting = true;
 
 		// Dragging mode
 		} else if (mouseDown && intersectingStar && !intersectingButton) {
-			//orbitControls.enabled = false;
 			dragging = true;
 			painting = false;
 		}
-
 
 	} else {
 		orbitControls.enabled = true;
@@ -1100,15 +1087,11 @@ function animate() {
 	    camera.lookAt(newLookAtPosition);
 	}
 
-	// Update orbitControls
-	//orbitControls.update();
-
-
 	// renderer.render( scene, camera );
 	composer.render();
 
+	// Non-time dependent physics
 	moveOutsideTime();
-
 
 	// Skip the move() function if paused
 	if (!play) {
@@ -1117,7 +1100,6 @@ function animate() {
 
 	// Update physics
 	move();
-
 
 }
 
@@ -1132,15 +1114,15 @@ function animate() {
 
 
 		// Attach mousemove and click event listeners to the window
-		canvas.addEventListener("mousemove", trackInput);
-		canvas.addEventListener("click", trackInput);
-		canvas.addEventListener("touchstart", trackInput);
-		canvas.addEventListener("touchmove", trackInput);
-		canvas.addEventListener("mousedown", (event) => { mouseDown = true; });
-		canvas.addEventListener("touchstart", (event) => { mouseDown = true; });
-		canvas.addEventListener("touchmove", (event) => { mouseDown = true; });
+		canvas.addEventListener("mousemove", trackInput, { passive: false });
+		canvas.addEventListener("click", trackInput, { passive: false });
+		canvas.addEventListener("touchstart", trackInput, { passive: false });
+		canvas.addEventListener("touchmove", trackInput, { passive: false });
+		canvas.addEventListener("mousedown", (event) => { mouseDown = true; event.preventDefault(); }, { passive: false });
+		canvas.addEventListener("touchstart", (event) => { mouseDown = true; event.preventDefault(); }, { passive: false });
+		canvas.addEventListener("touchmove", (event) => { mouseDown = true; event.preventDefault(); }, { passive: false });
 		canvas.addEventListener("touchend", (event) => { mouseDown = false; });
-		canvas.addEventListener("mouseup", (event) => { mouseDown = false; });
+		canvas.addEventListener("mouseup", (event) => { mouseDown = false; event.preventDefault(); }, { passive: false });
 
         // JavaScript to toggle the menu
         let menu = document.getElementById("menu");
@@ -1182,10 +1164,6 @@ function animate() {
 		window.addEventListener("keydown", () => {
 			if (event.keyCode == 71) {
 				play = !play;
-			} else if (event.keyCode == 81) {
-				let gridObject = scene.getObjectByName("grid");
-				let gridVisibility = gridObject.visible;
-				gridObject.visible = !gridVisibility;
 			} else if (event.key == "c") {
 				panCamera = true;
 			}
@@ -1328,6 +1306,21 @@ function animate() {
         	} else {
         		clockwiseInjection = false;
         	}
+        });
+
+
+        let toggleGrid = document.getElementById("toggleGrid");
+
+        toggleGrid.addEventListener("change", () => {
+			let gridObject = scene.getObjectByName("grid");
+			let gridVisibility = gridObject.visible;
+			
+        	if (toggleGrid.checked) {
+        		gridObject.visible = true;
+        	} else {
+        		gridObject.visible = false;
+        	}
+
         });
 
 
