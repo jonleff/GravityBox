@@ -212,7 +212,7 @@ let starColors = [0xFDB813, 0xfdb91c, 0xfcb103, 0xfdc135, 0xe3a002];
 
 let camera, orbitControls, scene, renderer;
 
-let dx, dy, dz, r, d;
+let r, d;
 
 let l, w, h, x, y, z;
 
@@ -1052,17 +1052,29 @@ function animate() {
 
 	// this might not be very performant
 
-	//orbitControls.enabled = false;
 
-	// Painting mode
-	if (mouseDown && spaceBarDown && !intersectingButton) {
+	if (spaceBarDown || intersectingStar) {
+		
 		orbitControls.enabled = false;
-		dragging = false;
-		painting = true;
-	} else if (mouseDown && intersectingStar && !intersectingButton) {
-		orbitControls.enabled = false;
-		dragging = true;
-		painting = false;
+
+		if (!mouseDown) {
+			intersectingStar = false;
+		}
+
+		// Painting mode
+		if (mouseDown && spaceBarDown && !intersectingButton) {
+			//orbitControls.enabled = false;
+			dragging = false;
+			painting = true;
+
+		// Dragging mode
+		} else if (mouseDown && intersectingStar && !intersectingButton) {
+			//orbitControls.enabled = false;
+			dragging = true;
+			painting = false;
+		}
+
+
 	} else {
 		orbitControls.enabled = true;
 		dragging = false;
