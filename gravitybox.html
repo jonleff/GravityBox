@@ -28,10 +28,6 @@
 				z-index: 0;
 			}
 
-			a {
-				color: #f00;
-			}
-
 
 
 
@@ -253,7 +249,6 @@ let planeObject;
 let mouseDown = false;
 let spaceBarDown = false;
 let intersectingStar = false;
-let overStar = false;
 let intersectingButton = false; // stores if we are hovered over a button or not
 
 
@@ -443,7 +438,6 @@ function loadSystem() {
 	let k = 0;
 	for (const starParam of starParams) {
 		starParam.particles = 5000 * starParam.radius * starParam.radius * starParam.radius;
-		starParam.geometry = "spherical";
 
 		// need to normalize and fix all of this, we actually use explicit x y and z, vectors are only for GUI!
 		starParam.x = starParam.position[0];
@@ -454,7 +448,6 @@ function loadSystem() {
 		starParam.v_y = starParam.velocity[1];
 		starParam.v_z = starParam.velocity[2];
 
-		starParam.id = k;
 		k += 1;
 
 	}
@@ -549,7 +542,6 @@ function loadSystem() {
 			star.mesh.setMatrixAt(particle.index, matrix)
 			star.mesh.setColorAt(particle.index, color.setHex( starColors[Math.floor(Math.random() * starColors.length)] ));
 			star.mesh.position.set(star.params.x, star.params.y, star.params.z);
-			star.mesh.name = star.params.id
 
 		}
 
@@ -573,11 +565,6 @@ function loadSystem() {
 }
 
 
-
-
-
-
-
 // Start the animation
 animate();
 
@@ -590,15 +577,9 @@ function generate_particles(params) {
 
 	let particles = [];
 
-	if (params.geometry === "spherical") {
-		l = params.radius * 2;
-		w = params.radius * 2;
-		h = params.radius * 2;
-	} else {
-		l = params.dimensions[0];
-		w = params.dimensions[1];
-		h = params.dimensions[2];
-	}
+	l = params.radius * 2;
+	w = params.radius * 2;
+	h = params.radius * 2;
 
 	// For each i in the particle count
 	for (let i = 0; i < params.particles; i++) {
@@ -610,24 +591,19 @@ function generate_particles(params) {
 		y = (Math.random() - 0.5) * w;
 		z = (Math.random() - 0.5) * h;
 
-		// If the geometry is spherical
-		if (params.geometry === "spherical") {
+		// Compute the distance between the center of the star and the particle
+		d = Math.sqrt((x * x) + (y * y) + (z * z));
 
-			// Compute the distance between the center of the star and the particle
+		// Keep recomputing (x, y, z) particle coordinates (and corresponding distance to origin) until they are within desired radius
+		while (d > params.radius) {
+
+			x = (Math.random() - 0.5) * l;
+			y = (Math.random() - 0.5) * w;
+			z = (Math.random() - 0.5) * h;
+
 			d = Math.sqrt((x * x) + (y * y) + (z * z));
 
-			// Keep recomputing (x, y, z) particle coordinates (and corresponding distance to origin) until they are within desired radius
-			while (d > params.radius) {
-
-				x = (Math.random() - 0.5) * l;
-				y = (Math.random() - 0.5) * w;
-				z = (Math.random() - 0.5) * h;
-
-				d = Math.sqrt((x * x) + (y * y) + (z * z));
-
-			}
 		}
-
 
 		// Initial velocity of particle is initial velocity of the cloud, by construction
 		v_x = params.velocity[0];
@@ -645,7 +621,6 @@ function generate_particles(params) {
 
 			particles.push({
 				index: j,
-				parent: params.id,
 				active: true,
 
 				// Initial position, for star particles executing SHM
@@ -957,9 +932,6 @@ function trackInput(event) {
     // Logic for moving star
     intersects = raycaster.intersectObject(stars[0].mesh);
 
-    // this area here is an absolute mess
-    // need to figure this out before we can proceed
-
     if (intersects.length > 0) {
     	intersectingStar = true;
     }
@@ -1104,236 +1076,207 @@ function animate() {
 }
 
 
-
-		/*
-		----------------------------------------------------
-		BELOW THIS POINT IS JAVASCRIPT THAT CONTROLS THE GUI
-		----------------------------------------------------
-		*/
-
-
-
-		// Attach mousemove and click event listeners to the window
-		canvas.addEventListener("mousemove", trackInput, { passive: false });
-		canvas.addEventListener("click", trackInput, { passive: false });
-		canvas.addEventListener("touchstart", trackInput, { passive: false });
-		canvas.addEventListener("touchmove", trackInput, { passive: false });
-		canvas.addEventListener("mousedown", (event) => { mouseDown = true; event.preventDefault(); }, { passive: false });
-		canvas.addEventListener("touchstart", (event) => { mouseDown = true; event.preventDefault(); }, { passive: false });
-		canvas.addEventListener("touchmove", (event) => { mouseDown = true; event.preventDefault(); }, { passive: false });
-		canvas.addEventListener("touchend", (event) => { mouseDown = false; });
-		canvas.addEventListener("mouseup", (event) => { mouseDown = false; event.preventDefault(); }, { passive: false });
-
-        // JavaScript to toggle the menu
-        let menu = document.getElementById("menu");
-        let showMenuButton = document.getElementById("showMenuButton");
-        let buttons = document.getElementById("buttons");
-
-        buttons.addEventListener("mouseenter", () => { intersectingButton = true; });
-        buttons.addEventListener("touchstart", () => { intersectingButton = true; });
-        buttons.addEventListener("mouseleave", () => { intersectingButton = false; });
-        buttons.addEventListener("touchend", () => { intersectingButton = false; });
-        menu.addEventListener("mouseenter", () => { intersectingButton = true; });
-        menu.addEventListener("touchstart", () => { intersectingButton = true; });
-        menu.addEventListener("mouseleave", () => { intersectingButton = false; });
-        menu.addEventListener("touchend", () => { intersectingButton = false; });
-        showMenuButton.addEventListener("mouseenter", () => { intersectingButton = true; });
-        showMenuButton.addEventListener("touchstart", () => { intersectingButton = true; });
-        showMenuButton.addEventListener("mouseleave", () => { intersectingButton = false; });
-        showMenuButton.addEventListener("touchend", () => { intersectingButton = false; });
-        showMenuButton.addEventListener("click", () => { 
-        	menu.classList.toggle("active");
-        	showMenuButton.style.display = "none"; 
-        });
-
-        hideMenuButton.addEventListener("click", () => { 
-        	menu.classList.toggle("active");
-        	showMenuButton.style.display = "block"; 
-        });
-
-
-
-		// Add event listeners
-		window.addEventListener("pointerdown", () => { panCamera = false; });
-		window.addEventListener("resize", () => {
-			camera.aspect = window.innerWidth / window.innerHeight;
-			camera.updateProjectionMatrix();
-			renderer.setSize( window.innerWidth, window.innerHeight );
-		});
-
-		window.addEventListener("keydown", () => {
-			if (event.keyCode == 71) {
-				play = !play;
-			} else if (event.key == "c") {
-				panCamera = true;
-			}
-		});
-
-		window.addEventListener("keydown", (event) => {
-			if (event.key == " ") {
-				spaceBarDown = true;
-				//activatePainting();
-			}
-		});
-
-		window.addEventListener("keyup", (event) => {
-			if (event.key == " ") {
-				spaceBarDown = false;
-				//deactivatePainting();
-			}
-		});	
-
-
-
-
-
-        // JavaScript to get slider objects
-        let brushWidthSlider = document.getElementById("brushWidth");
-        let brushDensitySlider = document.getElementById("brushDensity");
-        let eccentricitySlider = document.getElementById("eccentricity");
-        let gravitationalConstantSlider = document.getElementById("gravitationalConstant");
-
-        let clearParticlesButton = document.getElementById("clearParticles");
-        let reverseVelocitiesButton = document.getElementById("reverseVelocities");
-        let zeroOutVelocitiesButton = document.getElementById("zeroOutVelocities");
-
-
-        let brushWidthValue = document.getElementById("brushWidthValue");
-        let brushDensityValue = document.getElementById("brushDensityValue");
-        let eccentricityValue = document.getElementById("eccentricityValue");
-        let gravitationalConstantValue = document.getElementById("gravitationalConstantValue");
-
-
-		brushWidthSlider.addEventListener("input", () => {
-		    let value = parseFloat(brushWidthSlider.value);
-		    brushWidth = value;
-		    brushWidthValue.innerHTML = value.toFixed(2);
-		});
-
-		brushDensitySlider.addEventListener("input", () => {
-		    let value = parseFloat(brushDensitySlider.value);
-		    brushDensity = value;
-		    brushDensityValue.innerHTML = value.toFixed(2);
-		});
-
-		eccentricitySlider.addEventListener("input", () => {
-		    let value = parseFloat(eccentricitySlider.value);
-		    eccentricity = value;
-		    eccentricityValue.innerHTML = value.toFixed(2);
-		});
-
-		gravitationalConstantSlider.addEventListener("input", () => {
-		    let value = parseFloat(gravitationalConstantSlider.value);
-		    G = value;
-		    gravitationalConstantValue.innerHTML = value.toFixed(2);
-		});
-
-
-
-
-        clearParticlesButton.addEventListener("click", () => {
-        	for (const particle of particles) {
-				particle.active = false;
-				matrix.setPosition(0, 0, 0);
-				mesh.setMatrixAt(particle.index, matrix);
-			}
-
-			// Needed to update InstancedMesh object
-			mesh.instanceMatrix.needsUpdate = true;
-			mesh.instanceColor.needsUpdate = true;
-        });
-
-        reverseVelocitiesButton.addEventListener("click", () => {
-			for (const particle of particles) {
-				particle.v_x *= -1;
-				particle.v_y *= -1;
-				particle.v_z *= -1;
-
-			}
-        });
-
-        zeroOutVelocitiesButton.addEventListener("click", () => {
-        	for (const particle of particles) {
-				particle.v_x = 0;
-				particle.v_y = 0;
-				particle.v_z = 0;
-			}
-        });
-
-		// Play/Pause button
-		let playPauseButton = document.getElementById("playPauseButton");
-		let playIcon = document.getElementById("playIcon");
-		let pauseIcon = document.getElementById("pauseIcon");
-
-		playPauseButton.addEventListener("click", () => {
-		    if (play) {
-		        play = false; // Pause the simulation
-		        playIcon.style.display = "block";
-		        pauseIcon.style.display = "none";
-		    } else {
-		        play = true; // Resume the simulation
-		        playIcon.style.display = "none";
-		        pauseIcon.style.display = "block";
-		    }
-		});
-
-
-
-		// Grab painting toggle button
-		let paintingButton = document.getElementById("paintingButton");
-
-
-		paintingButton.addEventListener("click", () => {
-			if (spaceBarDown) {
-				spaceBarDown = false;
-				paintingButton.style.color = "";
-			} else {
-				spaceBarDown = true;
-				paintingButton.style.color = "blue";
-			}
-		});
-
-
-
-
-
-
-        let clockwiseToggle = document.getElementById("clockwiseToggle");
-
-        clockwiseToggle.addEventListener("change", () => {
-        	if (clockwiseToggle.checked) {
-        		clockwiseInjection = true;
-        	} else {
-        		clockwiseInjection = false;
-        	}
-        });
-
-
-        let toggleGrid = document.getElementById("toggleGrid");
-
-        toggleGrid.addEventListener("change", () => {
-			let gridObject = scene.getObjectByName("grid");
-			let gridVisibility = gridObject.visible;
-			
-        	if (toggleGrid.checked) {
-        		gridObject.visible = true;
-        	} else {
-        		gridObject.visible = false;
-        	}
-
-        });
-
-
-
-
-
-
-		</script>
-
-
-
-
-
-
-	</body>
+/*
+----------------------------------------------------
+BELOW THIS POINT IS JAVASCRIPT THAT CONTROLS THE GUI
+----------------------------------------------------
+*/
+
+// Attach mousemove and click event listeners to the window
+canvas.addEventListener("mousemove", trackInput, { passive: false });
+canvas.addEventListener("click", trackInput, { passive: false });
+canvas.addEventListener("touchstart", trackInput, { passive: false });
+canvas.addEventListener("touchmove", trackInput, { passive: false });
+canvas.addEventListener("mousedown", (event) => { mouseDown = true; event.preventDefault(); }, { passive: false });
+canvas.addEventListener("touchstart", (event) => { mouseDown = true; event.preventDefault(); }, { passive: false });
+canvas.addEventListener("touchmove", (event) => { mouseDown = true; event.preventDefault(); }, { passive: false });
+canvas.addEventListener("touchend", (event) => { mouseDown = false; });
+canvas.addEventListener("mouseup", (event) => { mouseDown = false; event.preventDefault(); }, { passive: false });
+
+// JavaScript to toggle the menu
+let menu = document.getElementById("menu");
+let showMenuButton = document.getElementById("showMenuButton");
+let buttons = document.getElementById("buttons");
+
+buttons.addEventListener("mouseenter", () => { intersectingButton = true; });
+buttons.addEventListener("touchstart", () => { intersectingButton = true; });
+buttons.addEventListener("mouseleave", () => { intersectingButton = false; });
+buttons.addEventListener("touchend", () => { intersectingButton = false; });
+menu.addEventListener("mouseenter", () => { intersectingButton = true; });
+menu.addEventListener("touchstart", () => { intersectingButton = true; });
+menu.addEventListener("mouseleave", () => { intersectingButton = false; });
+menu.addEventListener("touchend", () => { intersectingButton = false; });
+showMenuButton.addEventListener("mouseenter", () => { intersectingButton = true; });
+showMenuButton.addEventListener("touchstart", () => { intersectingButton = true; });
+showMenuButton.addEventListener("mouseleave", () => { intersectingButton = false; });
+showMenuButton.addEventListener("touchend", () => { intersectingButton = false; });
+showMenuButton.addEventListener("click", () => { 
+	menu.classList.toggle("active");
+	showMenuButton.style.display = "none"; 
+});
+
+hideMenuButton.addEventListener("click", () => { 
+	menu.classList.toggle("active");
+	showMenuButton.style.display = "block"; 
+});
+
+// Add event listeners
+window.addEventListener("pointerdown", () => { panCamera = false; });
+window.addEventListener("resize", () => {
+	camera.aspect = window.innerWidth / window.innerHeight;
+	camera.updateProjectionMatrix();
+	renderer.setSize( window.innerWidth, window.innerHeight );
+});
+
+window.addEventListener("keydown", () => {
+	if (event.keyCode == 71) {
+		play = !play;
+	} else if (event.key == "c") {
+		panCamera = true;
+	}
+});
+
+window.addEventListener("keydown", (event) => {
+	if (event.key == " ") {
+		spaceBarDown = true;
+	}
+});
+
+window.addEventListener("keyup", (event) => {
+	if (event.key == " ") {
+		spaceBarDown = false;
+	}
+});	
+
+
+// JavaScript to get slider objects
+let brushWidthSlider = document.getElementById("brushWidth");
+let brushDensitySlider = document.getElementById("brushDensity");
+let eccentricitySlider = document.getElementById("eccentricity");
+let gravitationalConstantSlider = document.getElementById("gravitationalConstant");
+
+let clearParticlesButton = document.getElementById("clearParticles");
+let reverseVelocitiesButton = document.getElementById("reverseVelocities");
+let zeroOutVelocitiesButton = document.getElementById("zeroOutVelocities");
+
+let brushWidthValue = document.getElementById("brushWidthValue");
+let brushDensityValue = document.getElementById("brushDensityValue");
+let eccentricityValue = document.getElementById("eccentricityValue");
+let gravitationalConstantValue = document.getElementById("gravitationalConstantValue");
+
+brushWidthSlider.addEventListener("input", () => {
+    let value = parseFloat(brushWidthSlider.value);
+    brushWidth = value;
+    brushWidthValue.innerHTML = value.toFixed(2);
+});
+
+brushDensitySlider.addEventListener("input", () => {
+    let value = parseFloat(brushDensitySlider.value);
+    brushDensity = value;
+    brushDensityValue.innerHTML = value.toFixed(2);
+});
+
+eccentricitySlider.addEventListener("input", () => {
+    let value = parseFloat(eccentricitySlider.value);
+    eccentricity = value;
+    eccentricityValue.innerHTML = value.toFixed(2);
+});
+
+gravitationalConstantSlider.addEventListener("input", () => {
+    let value = parseFloat(gravitationalConstantSlider.value);
+    G = value;
+    gravitationalConstantValue.innerHTML = value.toFixed(2);
+});
+
+clearParticlesButton.addEventListener("click", () => {
+	for (const particle of particles) {
+		particle.active = false;
+		matrix.setPosition(0, 0, 0);
+		mesh.setMatrixAt(particle.index, matrix);
+	}
+
+	// Needed to update InstancedMesh object
+	mesh.instanceMatrix.needsUpdate = true;
+	mesh.instanceColor.needsUpdate = true;
+});
+
+reverseVelocitiesButton.addEventListener("click", () => {
+	for (const particle of particles) {
+		particle.v_x *= -1;
+		particle.v_y *= -1;
+		particle.v_z *= -1;
+
+	}
+});
+
+zeroOutVelocitiesButton.addEventListener("click", () => {
+	for (const particle of particles) {
+		particle.v_x = 0;
+		particle.v_y = 0;
+		particle.v_z = 0;
+	}
+});
+
+// Play/Pause button
+let playPauseButton = document.getElementById("playPauseButton");
+let playIcon = document.getElementById("playIcon");
+let pauseIcon = document.getElementById("pauseIcon");
+
+playPauseButton.addEventListener("click", () => {
+    if (play) {
+        play = false; // Pause the simulation
+        playIcon.style.display = "block";
+        pauseIcon.style.display = "none";
+    } else {
+        play = true; // Resume the simulation
+        playIcon.style.display = "none";
+        pauseIcon.style.display = "block";
+    }
+});
+
+
+// Grab painting toggle button
+let paintingButton = document.getElementById("paintingButton");
+
+paintingButton.addEventListener("click", () => {
+
+	spaceBarDown = !spaceBarDown;
+
+	if (spaceBarDown) {
+		paintingButton.style.color = "";
+	} else {
+		paintingButton.style.color = "blue";
+	}
+
+});
+
+
+let clockwiseToggle = document.getElementById("clockwiseToggle");
+
+clockwiseToggle.addEventListener("change", () => {
+	if (clockwiseToggle.checked) {
+		clockwiseInjection = true;
+	} else {
+		clockwiseInjection = false;
+	}
+});
+
+
+let toggleGrid = document.getElementById("toggleGrid");
+
+toggleGrid.addEventListener("change", () => {
+	let gridObject = scene.getObjectByName("grid");
+	let gridVisibility = gridObject.visible;
+	
+	if (toggleGrid.checked) {
+		gridObject.visible = true;
+	} else {
+		gridObject.visible = false;
+	}
+
+});
+
+
+</script>
+</body>
 </html>
