@@ -271,6 +271,7 @@ let massWeightedStarPosition;
 
 
 
+
 // particle index tracker for instanced mesh
 let j = 0;
 
@@ -290,8 +291,14 @@ let eccentricity = 1;
 
 let cameraTarget = new THREE.Vector3(20, 20, 20);
 let orbitTarget = new THREE.Vector3(0, 0, 0);
-let lerpRate = 0.075;
+
+// Camera lerping variables
+let lerpTime = 0;
+let lerpRate = 0.01;
 let panCamera = false;
+let cameraDistance_x = 0;
+let cameraDistance_y = 0;
+let cameraDistance_z = 0;
 
 let vs = [];
 let vMean = 0;
@@ -1046,14 +1053,28 @@ function animate() {
 	requestAnimationFrame(animate);
 
 	if (panCamera) {
+
+		console.log(lerpTime);
+
+		lerpTime += lerpRate;
+
+		if (lerpTime >= 1) {
+			lerpTime = 0;
+			panCamera = false;
+		}
+
 	    // Update the camera's target position using linear interpolation
-	    orbitControls.target.lerp(new THREE.Vector3(starCOM_x, starCOM_y, starCOM_z), lerpRate);
+	    orbitControls.target.lerp(new THREE.Vector3(starCOM_x, starCOM_y, starCOM_z), lerpTime);
+
+	    // NEED TO FIX THE BELOW:
+
+	    camera.position.lerp(new THREE.Vector3(starCOM_x + cameraDistance_x, starCOM_y + cameraDistance_x, starCOM_z + cameraDistance_x), lerpTime);
 
 	    // Calculate the camera's current position
 	    const currentCameraPosition = camera.position.clone();
 
 	    // Calculate the camera's new look-at position using linear interpolation
-	    const newLookAtPosition = new THREE.Vector3(starCOM_x, starCOM_y, starCOM_z).lerp(currentCameraPosition, lerpRate);
+	    const newLookAtPosition = new THREE.Vector3(starCOM_x, starCOM_y, starCOM_z).lerp(currentCameraPosition, lerpTime);
 
 	    // Update the camera's lookAt
 	    camera.lookAt(newLookAtPosition);
@@ -1132,7 +1153,13 @@ window.addEventListener("keydown", () => {
 	if (event.keyCode == 71) {
 		play = !play;
 	} else if (event.key == "c") {
+		lerpTime = 0;
 		panCamera = true;
+
+		cameraDistance_x = camera.position.x - starCOM_x;
+		cameraDistance_y = camera.position.y - starCOM_y;
+		cameraDistance_z = camera.position.z - starCOM_z;
+
 	}
 });
 
