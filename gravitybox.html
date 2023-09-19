@@ -157,7 +157,7 @@
 		<input type="range" class="form-range" min="0.005" max="0.2" step="0.00001" value="0.01" id="brushDensity">
         
         <label for="eccentricity" class="form-label" style="margin-top: 20px;">Orbital Eccentricity</label> (<span id="eccentricityValue">1.0</span>)
-		<input type="range" class="form-range" min="0.25" max="1.5" step="0.001" value="1" id="eccentricity">  
+		<input type="range" class="form-range" min="0" max="1.5" step="0.001" value="1" id="eccentricity">  
 
         <label for="gravitationalConstant" class="form-label" style="margin-top: 20px;">Gravitational Const.</label> (<span id="gravitationalConstantValue">1.0</span>)
 		<input type="range" class="form-range" min="0" max="10" step="0.001" value="1" id="gravitationalConstant">  
@@ -179,7 +179,7 @@
     </div>
 
     <!-- Menu toggle button -->
-	<button type="button" class="btn btn-secondary" id="showMenuButton" style="margin-top: 10px;">Test Button</button>
+	<button type="button" class="btn btn-secondary" id="showMenuButton" style="margin-top: 10px;">Options</button>
 
 
 	<canvas id="canvas"></canvas>
@@ -433,14 +433,18 @@ scene.add(dynamicPlaneObject);
 
 function loadSystem() {
 
-	starParams = [{
+	starParams = [
+
+		{
 			type: "star",
 			position: [0, 0, 0],
 			velocity: [0, 0, 0],
 			fixed: true,
 			radius: 1.5,
 			mass: 1,
-		}];
+		}
+
+	];
 
 	let k = 0;
 	for (const starParam of starParams) {
@@ -527,7 +531,7 @@ function loadSystem() {
 	for (const starParam of starParams) {
 
 		// Generate an array of particle objects
-		let starParticles = new generate_particles(starParams[0]);
+		let starParticles = new generate_particles(starParam);
 		
 		// Generate an InstancedMesh to hold these particles
 		let starMesh = new THREE.InstancedMesh(particleGeometry, particleMaterial, starParticles.length);
@@ -673,12 +677,97 @@ function generate_particles(params) {
 
 function moveOutsideTime() {
 
-	for (const star of stars) {
+	console.log(starCOM_x, starCOM_y, starCOM_x);
 
-		if (dragging) {
+	if (painting) {
+
+		// Iterate through every particle
+		for (const particle of particles) {
+
+			// All particles are recyclable
+			if (Math.random() < brushDensity) {
+
+				// Orbital injection logic
+
+	           	// Vector pointing from stellar COM to injection point
+	           	// WHY CANT THIS BE NORMALIZED?????
+	           	r_x = planeIntersection.x - starCOM_x;
+	           	r_y = planeIntersection.y - starCOM_y;
+	           	r_z = planeIntersection.z - starCOM_z;
+
+				// Distance between stellar COM and injection point
+	           	let rMag = Math.sqrt((r_x * r_x) + (r_y * r_y) + (r_z * r_z));
+
+	           	// Normalized vector to store initial velocity direction
+	           	// v0Hat is cross product of u and r
+	           	let v0Hat_x = (u_y * r_z) - (u_z * r_y);
+	           	let v0Hat_y = (u_z * r_x) - (u_x * r_z);
+	           	let v0Hat_z = (u_x * r_y) - (u_y * r_x);
+
+				// Normalize v0Hat
+				let v0HatMag = Math.sqrt((v0Hat_x * v0Hat_x) + (v0Hat_y * v0Hat_y) + (v0Hat_z * v0Hat_z));
+				v0Hat_x /= v0HatMag;
+				v0Hat_y /= v0HatMag;
+				v0Hat_z /= v0HatMag;
+
+	           	if (clockwiseInjection) {
+	           		v0Hat_x *= -1;
+	           		v0Hat_y *= -1;
+	           		v0Hat_z *= -1;
+	           	}
+
+	            // Calculate the tangential velocity for circular orbit
+	            // Scale this velocity by user inputted eccentricity parameter
+	            let vTan = eccentricity * Math.sqrt(G / rMag);
+
+	            // Set the initial velocity with the magnitude of tangential velocity
+	            particle.v_x = v0Hat_x * vTan;
+	            particle.v_y = v0Hat_y * vTan;
+	            particle.v_z = v0Hat_z * vTan;
+
+
+	            /*
+	            else {
+		            particle.v_x = 0;
+		            particle.v_y = 0;
+		            particle.v_z = 0;
+	            }
+	            */
+
+				// Generate random spherical coordinates (on surface of sphere)
+				phi = Math.random() * Math.PI * 2; // azimuthal angle (0 to 2*Pi)
+				theta = Math.acos(2 * Math.random() - 1); // polar angle (0 to Pi)
+
+				// Convert spherical coordinates to Cartesian coordinates
+				particle.x = planeIntersection.x + (brushWidth * Math.sin(theta) * Math.cos(phi));
+				particle.y = planeIntersection.y + (brushWidth * Math.sin(theta) * Math.sin(phi));
+				particle.z = planeIntersection.z + (brushWidth * Math.cos(theta));
+
+	            // Mark the particle as active
+	            particle.active = true;
+
+	            // Update the particle's position in the instanced mesh
+	            mesh.setMatrixAt(particle.index, new THREE.Matrix4().makeTranslation(particle.x, particle.y, particle.z));
+				mesh.setColorAt(particle.index, color.setHex( colors[255] ));
+
+			}
+
+		}
+
+		// Needed to update InstancedMesh object
+		mesh.instanceMatrix.needsUpdate = true;
+		mesh.instanceColor.needsUpdate = true;
+
+	}
+
+	if (dragging) {
+
+		for (const star of stars) {
+
 			star.mesh.position.x = planeIntersection.x;
 			star.mesh.position.y = planeIntersection.y;
 			star.mesh.position.z = planeIntersection.z;
+
 		}
 
 	}
@@ -742,64 +831,6 @@ function move() {
 	// Iterate through every particle
 	for (const particle of particles) {
 
-		// All particles are recyclable
-		if (painting && Math.random() < brushDensity) {
-
-			// Orbital injection logic
-
-           	// Vector pointing from stellar COM to injection point
-           	// WHY CANT THIS BE NORMALIZED?????
-           	r_x = planeIntersection.x - starCOM_x;
-           	r_y = planeIntersection.y - starCOM_y;
-           	r_z = planeIntersection.z - starCOM_z;
-
-			// Distance between stellar COM and injection point
-           	let rMag = Math.sqrt((r_x * r_x) + (r_y * r_y) + (r_z * r_z));
-
-           	// Normalized vector to store initial velocity direction
-           	// v0Hat is cross product of u and r
-           	let v0Hat_x = (u_y * r_z) - (u_z * r_y);
-           	let v0Hat_y = (u_z * r_x) - (u_x * r_z);
-           	let v0Hat_z = (u_x * r_y) - (u_y * r_x);
-
-			// Normalize v0Hat
-			let v0HatMag = Math.sqrt((v0Hat_x * v0Hat_x) + (v0Hat_y * v0Hat_y) + (v0Hat_z * v0Hat_z));
-			v0Hat_x /= v0HatMag;
-			v0Hat_y /= v0HatMag;
-			v0Hat_z /= v0HatMag;
-
-           	if (clockwiseInjection) {
-           		v0Hat_x *= -1;
-           		v0Hat_y *= -1;
-           		v0Hat_z *= -1;
-           	}
-
-            // Calculate the tangential velocity for circular orbit
-            // Scale this velocity by user inputted eccentricity parameter
-            let vTan = eccentricity * Math.sqrt(G / rMag);
-
-            // Set the initial velocity with the magnitude of tangential velocity
-            particle.v_x = v0Hat_x * vTan;
-            particle.v_y = v0Hat_y * vTan;
-            particle.v_z = v0Hat_z * vTan;
-
-			// Generate random spherical coordinates (on surface of sphere)
-			phi = Math.random() * Math.PI * 2; // azimuthal angle (0 to 2*Pi)
-			theta = Math.acos(2 * Math.random() - 1); // polar angle (0 to Pi)
-
-			// Convert spherical coordinates to Cartesian coordinates
-			particle.x = planeIntersection.x + (brushWidth * Math.sin(theta) * Math.cos(phi));
-			particle.y = planeIntersection.y + (brushWidth * Math.sin(theta) * Math.sin(phi));
-			particle.z = planeIntersection.z + (brushWidth * Math.cos(theta));
-
-            // Mark the particle as active
-            particle.active = true;
-
-            // Update the particle's position in the instanced mesh
-            mesh.setMatrixAt(particle.index, new THREE.Matrix4().makeTranslation(particle.x, particle.y, particle.z));
-
-		}
-
 		let R = Math.sqrt((particle.x * particle.x) + (particle.y * particle.y) + (particle.z * particle.z));
 
 		// Outside system boundary
@@ -828,6 +859,7 @@ function move() {
 				particle.active = false;
 				matrix.setPosition(0, 0, 0);
 				mesh.setMatrixAt(particle.index, matrix);
+				mesh.setColorAt(particle.index, color.setHex( colors[255] ));
 				break;
 			}
 
@@ -1220,6 +1252,7 @@ clearParticlesButton.addEventListener("click", () => {
 		particle.active = false;
 		matrix.setPosition(0, 0, 0);
 		mesh.setMatrixAt(particle.index, matrix);
+		mesh.setColorAt(particle.index, color.setHex( colors[255] ));
 	}
 
 	// Needed to update InstancedMesh object
