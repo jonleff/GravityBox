@@ -138,12 +138,34 @@ canvas:focus {
         <label for="gravitationalConstant" class="form-label" style="margin-top: 20px;">Gravitational Const.</label> (<span id="gravitationalConstantValue">1.0</span>)
 		<input type="range" class="form-range" min="0" max="10" step="0.001" value="1" id="gravitationalConstant">  
 
-	    <div class="form-check form-switch" >
+		<hr style="background-color: white;">
+
+        <h3>Launch Speeds</h3>
+
+        <label for="xLaunchSpeed" class="form-label" style="margin-top: 20px;">x Launch Speed</label> (<span id="xLaunchSpeedValue">0.2</span>)
+		<input type="range" class="form-range" min="0" max="0.5" step="0.001" value="0.2" id="xLaunchSpeed">  
+
+        <label for="yLaunchSpeed" class="form-label" style="margin-top: 20px;">y Launch Speed</label> (<span id="yLaunchSpeedValue">0.2</span>)
+		<input type="range" class="form-range" min="0" max="0.5" step="0.001" value="0.2" id="yLaunchSpeed">  
+
+        <label for="zLaunchSpeed" class="form-label" style="margin-top: 20px;">z Launch Speed</label> (<span id="zLaunchSpeedValue">0.2</span>)
+		<input type="range" class="form-range" min="0" max="0.5" step="0.001" value="0.2" id="zLaunchSpeed">  
+
+		<hr style="background-color: white;">
+
+        <h3>Buttons</h3>
+
+	    <div class="form-check form-switch">
+			<label class="form-check-label" for="autoOrbit" style="margin-top: 20px;">Auto-Orbit</label>
+			<input type="checkbox" class="form-check-input" id="autoOrbit" checked>
+	    </div>
+
+	    <div class="form-check form-switch">
 			<label class="form-check-label" for="clockwiseToggle" style="margin-top: 20px;">Reverse Injection Direction</label>
 			<input type="checkbox" class="form-check-input" id="clockwiseToggle">
 	    </div>
 
-	    <div class="form-check form-switch" >
+	    <div class="form-check form-switch">
 			<label class="form-check-label" for="toggleGrid" style="margin-top: 20px;">Toggle Grid</label>
 			<input type="checkbox" class="form-check-input" id="toggleGrid" checked>
 	    </div>
@@ -251,19 +273,18 @@ let massWeightedStarPosition;
 // particle index tracker for instanced mesh
 let j = 0;
 
-// Gravitational constant (fine-tuned for the environment)
-let G = 1;
 
-let numParticles = 50000;
+let G = 1; // gravitational constant (heuristically-derived)
+let numParticles = 75000; // controls how many particles are in the system
+let brushWidth = 0.5; // controls spray brush width
+let brushDensity = 0.01; // controls brush density
+let eccentricity = 1; // controls ellipse curvature
 
-// Controls spray brush width
-let brushWidth = 0.5;
+let autoOrbit = true;
+let vLaunch_x = 0.2;
+let vLaunch_y = 0.2;
+let vLaunch_z = 0.2;
 
-// Controls brush density
-let brushDensity = 0.01;
-
-// Controls ellipse curvature
-let eccentricity = 1;
 
 let cameraTarget = new THREE.Vector3(20, 20, 20);
 let orbitTarget = new THREE.Vector3(0, 0, 0);
@@ -663,52 +684,57 @@ function moveOutsideTime() {
 			// All particles are recyclable
 			if (Math.random() < brushDensity) {
 
-				// Orbital injection logic
 
-	           	// Vector pointing from stellar COM to injection point
-	           	// WHY CANT THIS BE NORMALIZED?????
-	           	r_x = planeIntersection.x - starCOM_x;
-	           	r_y = planeIntersection.y - starCOM_y;
-	           	r_z = planeIntersection.z - starCOM_z;
+	            if (autoOrbit) {
 
-				// Distance between stellar COM and injection point
-	           	let rMag = Math.sqrt((r_x * r_x) + (r_y * r_y) + (r_z * r_z));
+					// Orbital injection logic
 
-	           	// Normalized vector to store initial velocity direction
-	           	// v0Hat is cross product of u and r
-	           	let v0Hat_x = (u_y * r_z) - (u_z * r_y);
-	           	let v0Hat_y = (u_z * r_x) - (u_x * r_z);
-	           	let v0Hat_z = (u_x * r_y) - (u_y * r_x);
+		           	// Vector pointing from stellar COM to injection point
+		           	// WHY CANT THIS BE NORMALIZED?????
+		           	r_x = planeIntersection.x - starCOM_x;
+		           	r_y = planeIntersection.y - starCOM_y;
+		           	r_z = planeIntersection.z - starCOM_z;
 
-				// Normalize v0Hat
-				let v0HatMag = Math.sqrt((v0Hat_x * v0Hat_x) + (v0Hat_y * v0Hat_y) + (v0Hat_z * v0Hat_z));
-				v0Hat_x /= v0HatMag;
-				v0Hat_y /= v0HatMag;
-				v0Hat_z /= v0HatMag;
+					// Distance between stellar COM and injection point
+		           	let rMag = Math.sqrt((r_x * r_x) + (r_y * r_y) + (r_z * r_z));
 
-	           	if (clockwiseInjection) {
-	           		v0Hat_x *= -1;
-	           		v0Hat_y *= -1;
-	           		v0Hat_z *= -1;
-	           	}
+		           	// Normalized vector to store initial velocity direction
+		           	// v0Hat is cross product of u and r
+		           	let v0Hat_x = (u_y * r_z) - (u_z * r_y);
+		           	let v0Hat_y = (u_z * r_x) - (u_x * r_z);
+		           	let v0Hat_z = (u_x * r_y) - (u_y * r_x);
 
-	            // Calculate the tangential velocity for circular orbit
-	            // Scale this velocity by user inputted eccentricity parameter
-	            let vTan = eccentricity * Math.sqrt(G / rMag);
+					// Normalize v0Hat
+					let v0HatMag = Math.sqrt((v0Hat_x * v0Hat_x) + (v0Hat_y * v0Hat_y) + (v0Hat_z * v0Hat_z));
+					v0Hat_x /= v0HatMag;
+					v0Hat_y /= v0HatMag;
+					v0Hat_z /= v0HatMag;
 
-	            // Set the initial velocity with the magnitude of tangential velocity
-	            particle.v_x = v0Hat_x * vTan;
-	            particle.v_y = v0Hat_y * vTan;
-	            particle.v_z = v0Hat_z * vTan;
+		           	if (clockwiseInjection) {
+		           		v0Hat_x *= -1;
+		           		v0Hat_y *= -1;
+		           		v0Hat_z *= -1;
+		           	}
+
+		            // Calculate the tangential velocity for circular orbit
+		            // Scale this velocity by user inputted eccentricity parameter
+		            let vTan = eccentricity * Math.sqrt(G / rMag);
+
+		            // Set the initial velocity with the magnitude of tangential velocity
+		            particle.v_x = v0Hat_x * vTan;
+		            particle.v_y = v0Hat_y * vTan;
+		            particle.v_z = v0Hat_z * vTan;
 
 
-	            /*
-	            else {
-		            particle.v_x = 0;
-		            particle.v_y = 0;
-		            particle.v_z = 0;
+	            } else {
+
+		            // Inject particles with user-specified velocities (sliders)
+		            particle.v_x = vLaunch_x;
+		            particle.v_y = vLaunch_y;
+		            particle.v_z = vLaunch_z;
+
 	            }
-	            */
+
 
 				// Generate random spherical coordinates (on surface of sphere)
 				phi = Math.random() * Math.PI * 2; // azimuthal angle (0 to 2*Pi)
@@ -1189,6 +1215,9 @@ let brushWidthSlider = document.getElementById("brushWidth");
 let brushDensitySlider = document.getElementById("brushDensity");
 let eccentricitySlider = document.getElementById("eccentricity");
 let gravitationalConstantSlider = document.getElementById("gravitationalConstant");
+let xLaunchSpeedSlider = document.getElementById("xLaunchSpeed");
+let yLaunchSpeedSlider = document.getElementById("yLaunchSpeed");
+let zLaunchSpeedSlider = document.getElementById("zLaunchSpeed");
 
 let clearParticlesButton = document.getElementById("clearParticles");
 let reverseVelocitiesButton = document.getElementById("reverseVelocities");
@@ -1198,6 +1227,9 @@ let brushWidthValue = document.getElementById("brushWidthValue");
 let brushDensityValue = document.getElementById("brushDensityValue");
 let eccentricityValue = document.getElementById("eccentricityValue");
 let gravitationalConstantValue = document.getElementById("gravitationalConstantValue");
+let xLaunchSpeedValue = document.getElementById("xLaunchSpeedValue");
+let yLaunchSpeedValue = document.getElementById("yLaunchSpeedValue");
+let zLaunchSpeedValue = document.getElementById("zLaunchSpeedValue");
 
 brushWidthSlider.addEventListener("input", () => {
     let value = parseFloat(brushWidthSlider.value);
@@ -1221,6 +1253,24 @@ gravitationalConstantSlider.addEventListener("input", () => {
     let value = parseFloat(gravitationalConstantSlider.value);
     G = value;
     gravitationalConstantValue.innerHTML = value.toFixed(2);
+});
+
+xLaunchSpeedSlider.addEventListener("input", () => {
+    let value = parseFloat(xLaunchSpeedSlider.value);
+    vLaunch_x = value;
+    xLaunchSpeedValue.innerHTML = value.toFixed(2);
+});
+
+yLaunchSpeedSlider.addEventListener("input", () => {
+    let value = parseFloat(yLaunchSpeedSlider.value);
+    vLaunch_y = value;
+    yLaunchSpeedValue.innerHTML = value.toFixed(2);
+});
+
+zLaunchSpeedSlider.addEventListener("input", () => {
+    let value = parseFloat(zLaunchSpeedSlider.value);
+    vLaunch_z = value;
+    zLaunchSpeedValue.innerHTML = value.toFixed(2);
 });
 
 clearParticlesButton.addEventListener("click", () => {
@@ -1294,6 +1344,16 @@ clockwiseToggle.addEventListener("change", () => {
 		clockwiseInjection = true;
 	} else {
 		clockwiseInjection = false;
+	}
+});
+
+let autoOrbitToggle = document.getElementById("autoOrbit");
+
+autoOrbitToggle.addEventListener("change", () => {
+	if (autoOrbit.checked) {
+		autoOrbit = true;
+	} else {
+		autoOrbit = false;
 	}
 });
 
