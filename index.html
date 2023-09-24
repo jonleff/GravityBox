@@ -19,8 +19,9 @@ body {
 	user-select: none;
 }
 
-canvas:focus {
-	outline: none;
+/* Remove the default focus styles for the button */
+*:focus {
+    outline: none;
 }
 
 
@@ -124,7 +125,7 @@ canvas:focus {
         
         <button id="hideMenuButton"><i class="fa-solid fa-xmark"></i></button>
 
-        <h2>Parameters</h2>
+        <h3>Brush Settings</h3>
 
         <label for="brushWidth" class="form-label" style="margin-top: 10px;">Brush Width</label> (<span id="brushWidthValue">0.5</span>)
 		<input type="range" class="form-range" min="0.2" max="5" step="0.001" value="0.5" id="brushWidth">
@@ -132,15 +133,18 @@ canvas:focus {
         <label for="brushDensity" class="form-label" style="margin-top: 20px;">Brush Density</label> (<span id="brushDensityValue">0.01</span>)
 		<input type="range" class="form-range" min="0.005" max="0.2" step="0.00001" value="0.01" id="brushDensity">
         
-        <label for="eccentricity" class="form-label" style="margin-top: 20px;">Orbital Eccentricity</label> (<span id="eccentricityValue">1.0</span>)
-		<input type="range" class="form-range" min="0" max="1.5" step="0.001" value="1" id="eccentricity">  
-
-        <label for="gravitationalConstant" class="form-label" style="margin-top: 20px;">Gravitational Const.</label> (<span id="gravitationalConstantValue">1.0</span>)
-		<input type="range" class="form-range" min="0" max="10" step="0.001" value="1" id="gravitationalConstant">  
 
 		<hr style="background-color: white;">
 
-        <h3>Launch Speeds</h3>
+        <h3>Launch Settings</h3>
+
+	    <div class="form-check form-switch">
+			<label class="form-check-label" for="autoOrbit" style="margin-top: 20px;">Auto-Orbit</label>
+			<input type="checkbox" class="form-check-input" id="autoOrbit" checked>
+	    </div>
+
+        <label for="eccentricity" class="form-label" style="margin-top: 20px;">Orbital Eccentricity</label> (<span id="eccentricityValue">1.0</span>)
+		<input type="range" class="form-range" min="0" max="1.5" step="0.001" value="1" id="eccentricity"> 
 
         <label for="xLaunchSpeed" class="form-label" style="margin-top: 20px;">x Launch Speed</label> (<span id="xLaunchSpeedValue">0.2</span>)
 		<input type="range" class="form-range" min="0" max="0.5" step="0.001" value="0.2" id="xLaunchSpeed">  
@@ -151,14 +155,14 @@ canvas:focus {
         <label for="zLaunchSpeed" class="form-label" style="margin-top: 20px;">z Launch Speed</label> (<span id="zLaunchSpeedValue">0.2</span>)
 		<input type="range" class="form-range" min="0" max="0.5" step="0.001" value="0.2" id="zLaunchSpeed">  
 
+        <label for="gravitationalConstant" class="form-label" style="margin-top: 20px;">Gravitational Const.</label> (<span id="gravitationalConstantValue">1.0</span>)
+		<input type="range" class="form-range" min="0" max="10" step="0.001" value="1" id="gravitationalConstant">  
+
 		<hr style="background-color: white;">
 
         <h3>Buttons</h3>
 
-	    <div class="form-check form-switch">
-			<label class="form-check-label" for="autoOrbit" style="margin-top: 20px;">Auto-Orbit</label>
-			<input type="checkbox" class="form-check-input" id="autoOrbit" checked>
-	    </div>
+
 
 	    <div class="form-check form-switch">
 			<label class="form-check-label" for="clockwiseToggle" style="margin-top: 20px;">Reverse Injection Direction</label>
@@ -674,7 +678,6 @@ function generate_particles(params) {
 
 function moveOutsideTime() {
 
-	console.log(starCOM_x, starCOM_y, starCOM_x);
 
 	if (painting) {
 
@@ -683,7 +686,6 @@ function moveOutsideTime() {
 
 			// All particles are recyclable
 			if (Math.random() < brushDensity) {
-
 
 	            if (autoOrbit) {
 
@@ -1049,6 +1051,9 @@ function trackInput(event) {
 
 function animate() {
 
+	console.log(mouseDown);
+
+
 	//tag.innerHTML = mouseDown + ", " + spaceBarDown + ", " + intersectingButton + ", " + orbitControls.enabled;
 
 	// Navigation logic
@@ -1065,9 +1070,15 @@ function animate() {
 			dragging = false;
 			painting = true;
 
+
 		// Dragging mode
 		} else if (mouseDown && intersectingStar && !intersectingButton) {
 			dragging = true;
+			painting = false;
+		}
+
+		else {
+			dragging = false;
 			painting = false;
 		}
 
@@ -1087,8 +1098,6 @@ function animate() {
 	requestAnimationFrame(animate);
 
 	if (panCamera) {
-
-		console.log(lerpTime);
 
 		lerpTime += lerpRate;
 
@@ -1200,12 +1209,14 @@ window.addEventListener("keydown", () => {
 window.addEventListener("keydown", (event) => {
 	if (event.key == " ") {
 		spaceBarDown = true;
+		event.preventDefault();
 	}
 });
 
 window.addEventListener("keyup", (event) => {
 	if (event.key == " ") {
 		spaceBarDown = false;
+		event.preventDefault();
 	}
 });	
 
@@ -1350,10 +1361,18 @@ clockwiseToggle.addEventListener("change", () => {
 let autoOrbitToggle = document.getElementById("autoOrbit");
 
 autoOrbitToggle.addEventListener("change", () => {
-	if (autoOrbit.checked) {
+	if (autoOrbitToggle.checked) {
 		autoOrbit = true;
+		xLaunchSpeedSlider.disabled = true;
+		yLaunchSpeedSlider.disabled = true;
+		zLaunchSpeedSlider.disabled = true;
+		eccentricitySlider.disabled = false;
 	} else {
 		autoOrbit = false;
+		xLaunchSpeedSlider.disabled = false;
+		yLaunchSpeedSlider.disabled = false;
+		zLaunchSpeedSlider.disabled = false;
+		eccentricitySlider.disabled = true;
 	}
 });
 
